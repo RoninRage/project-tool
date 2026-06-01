@@ -2,11 +2,11 @@
 set -e
 
 echo "Running database migrations..."
-./node_modules/.bin/prisma db push
+node ./node_modules/prisma/build/index.js db push
 
 if [ "${SEED_DB:-false}" = "true" ]; then
   echo "Seeding database..."
-  ./node_modules/.bin/prisma db seed
+  node ./node_modules/prisma/build/index.js db seed
 fi
 
 echo "Starting application..."
