@@ -1,13 +1,11 @@
-version: '3.9'
-
 services:
   app:
     image: projekt-prio:latest
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - '3000:3000'
+    expose:
+      - '3000'
     environment:
       - DATABASE_URL=file:/app/data/prod.db
       - NODE_ENV=production
@@ -15,13 +13,26 @@ services:
     volumes:
       - projekt-prio-data:/app/data
     restart: always
+    networks:
+      - proxy_net
     healthcheck:
       test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3000/api/settings']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.projekt-prio.rule=Host(`projects.home.maker-ronin.cloud`)"
+      - "traefik.http.routers.projekt-prio.entrypoints=websecure"
+      - "traefik.http.routers.projekt-prio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.projekt-prio.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy_net"
 
 volumes:
   projekt-prio-data:
     driver: local
+
+networks:
+  proxy_net:
+    external: true
