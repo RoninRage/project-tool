@@ -25,6 +25,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.projekt-prio.rule=Host(`projects.home.maker-ronin.cloud`)"
       - "traefik.http.routers.projekt-prio.entrypoints=websecure"
+      - "traefik.http.routers.projekt-prio.tls=true"
       - "traefik.http.routers.projekt-prio.tls.certresolver=letsencrypt"
       - "traefik.http.services.projekt-prio.loadbalancer.server.port=3000"
       - "traefik.docker.network=proxy_net"
