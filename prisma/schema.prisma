@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      String   @default("IDEA")
+  category    String?
+  nextStep    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  scores      Score[]
+}
+
+model Score {
+  id          String  @id @default(cuid())
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  criterionId String
+  value       Int
+}
+
+model Settings {
+  id      String @id @default("singleton")
+  weights String
+}

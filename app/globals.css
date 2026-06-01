@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #0f1117;
+    --foreground: #e2e8f0;
+    --card: #1a1f2e;
+    --card-border: #2d3748;
+    --accent: #f59e0b;
+    --accent-hover: #d97706;
+    --muted: #4a5568;
+    --muted-foreground: #718096;
+  }
+  .light {
+    --background: #f8fafc;
+    --foreground: #1a202c;
+    --card: #ffffff;
+    --card-border: #e2e8f0;
+    --accent: #d97706;
+    --accent-hover: #b45309;
+    --muted: #e2e8f0;
+    --muted-foreground: #4a5568;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}

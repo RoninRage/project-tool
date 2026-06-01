@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - DATABASE_URL=file:/app/data/dev.db
+      - NODE_ENV=development
+      - SEED_DB=true
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

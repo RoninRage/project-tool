@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  app:
+    image: projekt-prio:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - DATABASE_URL=file:/app/data/prod.db
+      - NODE_ENV=production
+      - SEED_DB=false
+    volumes:
+      - projekt-prio-data:/app/data
+    restart: always
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3000/api/settings']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  projekt-prio-data:
+    driver: local
