@@ -227,9 +227,9 @@ function MatrixView({
   projects: ProjectWithScores[]
   weights: WeightsMap
 }) {
-  const width = 560
-  const height = 400
-  const padding = { top: 30, right: 30, bottom: 50, left: 50 }
+  const width = 960
+  const height = 600
+  const padding = { top: 36, right: 40, bottom: 56, left: 56 }
   const plotW = width - padding.left - padding.right
   const plotH = height - padding.top - padding.bottom
 
@@ -264,9 +264,10 @@ function MatrixView({
   return (
     <div className="overflow-x-auto">
       <svg
-        width={width}
-        height={height}
-        className="max-w-full"
+        viewBox={`0 0 ${width} ${height}`}
+        width="100%"
+        className="block w-full h-auto"
+        preserveAspectRatio="xMidYMid meet"
         style={{ background: 'var(--card)', borderRadius: 8 }}
       >
         <g transform={`translate(${padding.left},${padding.top})`}>
