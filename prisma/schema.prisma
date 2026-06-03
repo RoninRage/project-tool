@@ -8,15 +8,24 @@ datasource db {
 }
 
 model Project {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   name        String
   description String?
-  status      String   @default("IDEA")
+  status      String         @default("IDEA")
   category    String?
   nextStep    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   scores      Score[]
+  history     ScoreHistory[]
+}
+
+model ScoreHistory {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  score     Int
+  createdAt DateTime @default(now())
 }
 
 model Score {

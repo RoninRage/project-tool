@@ -68,7 +68,19 @@ export async function POST(request: NextRequest) {
       })
     })
 
-    return NextResponse.json(project, { status: 201 })
+    const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } })
+    const weights = settings ? JSON.parse(settings.weights) : DEFAULT_WEIGHTS
+    const scoreMap: Record<string, number> = {}
+    for (const s of project!.scores) {
+      scoreMap[s.criterionId] = s.value
+    }
+    const computed = calculateScore(scoreMap, weights)
+
+    await prisma.scoreHistory.create({
+      data: { projectId: project!.id, score: computed },
+    })
+
+    return NextResponse.json({ ...project, computedScore: computed }, { status: 201 })
   } catch (error) {
     console.error('POST /api/projects error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { CRITERIA, calculateScore, getScoreColor } from '@/lib/criteria'
-import type { Status } from '@/lib/types'
+import type { Status, ScoreHistoryEntry } from '@/lib/types'
+import ScoreHistoryChart from './ScoreHistoryChart'
 
 const STATUS_LABELS: Record<Status, string> = {
   IDEA: 'Idee',
@@ -26,9 +27,10 @@ interface ProjectFormProps {
   initialData?: Partial<ProjectFormData>
   onSubmit: (data: ProjectFormData) => Promise<void>
   submitLabel: string
+  history?: ScoreHistoryEntry[]
 }
 
-export default function ProjectForm({ initialData, onSubmit, submitLabel }: ProjectFormProps) {
+export default function ProjectForm({ initialData, onSubmit, submitLabel, history }: ProjectFormProps) {
   const router = useRouter()
   const [name, setName] = useState(initialData?.name ?? '')
   const [description, setDescription] = useState(initialData?.description ?? '')
@@ -261,6 +263,16 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel }: Proj
           })}
         </div>
       </div>
+
+      {/* Score history */}
+      {history && history.length >= 1 && (
+        <div className="rounded-xl border border-[var(--card-border)] p-6" style={{ background: 'var(--card)' }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-4">
+            Score-Verlauf
+          </h2>
+          <ScoreHistoryChart history={history} />
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">

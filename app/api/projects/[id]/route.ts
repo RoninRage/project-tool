@@ -9,7 +9,13 @@ export async function GET(
   try {
     const { id } = await params
     const [project, settings] = await Promise.all([
-      prisma.project.findUnique({ where: { id }, include: { scores: true } }),
+      prisma.project.findUnique({
+        where: { id },
+        include: {
+          scores: true,
+          history: { orderBy: { createdAt: 'asc' } },
+        },
+      }),
       prisma.settings.findUnique({ where: { id: 'singleton' } }),
     ])
 
@@ -86,9 +92,15 @@ export async function PUT(
       scoreMap[s.criterionId] = s.value
     }
 
+    const computed = calculateScore(scoreMap, weights)
+
+    await prisma.scoreHistory.create({
+      data: { projectId: id, score: computed },
+    })
+
     return NextResponse.json({
       ...project,
-      computedScore: calculateScore(scoreMap, weights),
+      computedScore: computed,
     })
   } catch (error) {
     console.error('PUT /api/projects/[id] error:', error)
