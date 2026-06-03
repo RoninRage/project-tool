@@ -75,6 +75,12 @@ export default function ProjectForm({
   // Prevent blur from double-firing after Enter
   const addingRef = useRef(false)
 
+  // Drag & drop state
+  const dragFromHandleRef = useRef(false)
+  const dragTaskIdRef = useRef<string | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
   useEffect(() => {
     Promise.all([
       fetch('/api/settings').then((r) => r.json()),
@@ -182,6 +188,65 @@ export default function ProjectForm({
   const handleDeleteTask = async (taskId: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
     await fetch(`/api/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' })
+  }
+
+  // ── Drag & drop ───────────────────────────────────────────────────────────
+
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    if (!dragFromHandleRef.current) {
+      e.preventDefault()
+      return
+    }
+    dragFromHandleRef.current = false
+    dragTaskIdRef.current = taskId
+    setDraggingId(taskId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragEnd = () => {
+    dragTaskIdRef.current = null
+    dragFromHandleRef.current = false
+    setDraggingId(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverIndex(index)
+  }
+
+  const handleDrop = (e: React.DragEvent, toIndex: number) => {
+    e.preventDefault()
+    const draggedId = dragTaskIdRef.current
+    if (!draggedId) return
+
+    const fromIndex = tasks.findIndex((t) => t.id === draggedId)
+    setDragOverIndex(null)
+    if (fromIndex === toIndex) return
+
+    // Reorder locally
+    const newTasks = [...tasks]
+    const [removed] = newTasks.splice(fromIndex, 1)
+    newTasks.splice(toIndex, 0, removed)
+    setTasks(newTasks.map((t, i) => ({ ...t, order: i })))
+
+    // PATCH only tasks whose position in the array changed
+    const patches: { id: string; newOrder: number }[] = []
+    for (let i = 0; i < newTasks.length; i++) {
+      const originalPos = tasks.findIndex((t) => t.id === newTasks[i].id)
+      if (originalPos !== i) patches.push({ id: newTasks[i].id, newOrder: i })
+    }
+
+    Promise.all(
+      patches.map(({ id, newOrder }) =>
+        fetch(`/api/projects/${projectId}/tasks/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: newOrder }),
+        })
+      )
+    )
   }
 
   // ── Form submit ────────────────────────────────────────────────────────────
@@ -386,12 +451,39 @@ export default function ProjectForm({
             <>
               {/* Task list */}
               {tasks.length > 0 && (
-                <ul className="space-y-1 mb-3">
-                  {tasks.map((task) => (
+                <ul className="mb-3">
+                  {tasks.map((task, index) => (
                     <li
                       key={task.id}
-                      className="flex items-center gap-2 group py-1"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, task.id)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={(e) => handleDrop(e, index)}
+                      className={`flex items-center gap-2 group py-1 border-t-2 transition-opacity ${
+                        draggingId === task.id ? 'opacity-30' : 'opacity-100'
+                      } ${
+                        dragOverIndex === index && draggingId !== task.id
+                          ? 'border-amber-500'
+                          : 'border-transparent'
+                      }`}
                     >
+                      {/* Drag handle */}
+                      <span
+                        onMouseDown={() => { dragFromHandleRef.current = true }}
+                        className="shrink-0 cursor-grab active:cursor-grabbing text-[var(--muted-foreground)] hover:text-[var(--foreground)] opacity-0 group-hover:opacity-100 transition-opacity select-none"
+                        title="Ziehen zum Sortieren"
+                      >
+                        <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
+                          <circle cx="2" cy="2" r="1.5" />
+                          <circle cx="6" cy="2" r="1.5" />
+                          <circle cx="2" cy="6" r="1.5" />
+                          <circle cx="6" cy="6" r="1.5" />
+                          <circle cx="2" cy="10" r="1.5" />
+                          <circle cx="6" cy="10" r="1.5" />
+                        </svg>
+                      </span>
+
                       {/* Checkbox */}
                       <input
                         type="checkbox"
