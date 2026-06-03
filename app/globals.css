@@ -30,4 +30,15 @@
   .font-mono {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
   }
+  .matrix-label {
+    cursor: pointer;
+  }
+  .matrix-label text {
+    fill: #e2e8f0;
+  }
+  .matrix-label:hover text {
+    fill: #93c5fd;
+    text-decoration: underline;
+    text-decoration-color: #93c5fd;
+  }
 }

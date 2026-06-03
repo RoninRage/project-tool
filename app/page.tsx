@@ -329,15 +329,16 @@ function MatrixView({
                   stroke={color}
                   strokeWidth={2}
                 />
-                <text
-                  x={cx + 11}
-                  y={cy + 4}
-                  fill="#e2e8f0"
-                  fontSize={10}
-                  style={{ userSelect: 'none' }}
-                >
-                  {project.name.length > 18 ? project.name.slice(0, 17) + '…' : project.name}
-                </text>
+                <a href={`/projects/${project.id}/edit`} className="matrix-label">
+                  <text
+                    x={cx + 11}
+                    y={cy + 4}
+                    fontSize={10}
+                    style={{ userSelect: 'none' }}
+                  >
+                    {project.name.length > 18 ? project.name.slice(0, 17) + '…' : project.name}
+                  </text>
+                </a>
               </g>
             )
           })}
