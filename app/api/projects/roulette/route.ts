@@ -18,8 +18,8 @@ export async function GET() {
       prisma.settings.findUnique({ where: { id: 'singleton' } }),
     ])
 
-    if (projects.length === 0) {
-      return NextResponse.json({ error: 'No active projects' }, { status: 404 })
+    if (projects.length < 3) {
+      return NextResponse.json({ error: 'Not enough projects' }, { status: 422 })
     }
 
     const weights = settings ? JSON.parse(settings.weights) : DEFAULT_WEIGHTS
@@ -71,7 +71,7 @@ export async function GET() {
       ],
     })
 
-    const recommendation = (message.content[0] as { type: string; text: string }).text.trim()
+    const context = (message.content[0] as { type: string; text: string }).text.trim()
 
     return NextResponse.json({
       project: {
@@ -84,7 +84,7 @@ export async function GET() {
         computedScore,
         tasks: project.tasks,
       },
-      recommendation,
+      context,
     })
   } catch (error) {
     console.error('GET /api/projects/roulette error:', error)

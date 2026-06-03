@@ -459,6 +459,151 @@ function MatrixView({
   )
 }
 
+interface RouletteProject {
+  id: string
+  name: string
+  description: string | null
+  status: Status
+  category: string | null
+  nextStep: string | null
+  computedScore: number
+}
+
+interface RouletteResult {
+  project: RouletteProject
+  context: string | null
+}
+
+function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 4000)
+    return () => clearTimeout(t)
+  }, [onDismiss])
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg"
+      style={{ background: '#1a1f2e', border: '1px solid #ef4444', color: '#fca5a5' }}>
+      {message}
+    </div>
+  )
+}
+
+function RouletteModal({
+  result,
+  modalLoading,
+  onClose,
+  onRefresh,
+}: {
+  result: RouletteResult | null
+  modalLoading: boolean
+  onClose: () => void
+  onRefresh: () => void
+}) {
+  const router = useRouter()
+  const score = result?.project.computedScore ?? 0
+  const scoreColor = result ? getScoreColor(score) : 'amber'
+  const gradientFrom = scoreColor === 'green' ? '#22c55e' : scoreColor === 'amber' ? '#f59e0b' : '#3b82f6'
+  const gradientTo   = scoreColor === 'green' ? '#16a34a' : scoreColor === 'amber' ? '#d97706' : '#2563eb'
+  const scoreTextColor = scoreColor === 'green' ? '#22c55e' : scoreColor === 'amber' ? '#f59e0b' : '#3b82f6'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[480px] rounded-2xl border border-[var(--card-border)] p-8"
+        style={{ background: 'var(--card)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-slate-700 transition-colors text-lg leading-none"
+        >
+          ×
+        </button>
+
+        {modalLoading || !result ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div
+              className="w-8 h-8 rounded-full border-2 border-[var(--card-border)] animate-spin"
+              style={{ borderTopColor: 'var(--accent)' }}
+            />
+            <span className="text-xs text-[var(--muted-foreground)]">Würfle…</span>
+          </div>
+        ) : (
+          <>
+            {/* Project name */}
+            <h2 className="text-2xl font-bold text-[var(--foreground)] leading-tight pr-8 mb-3">
+              {result.project.name}
+            </h2>
+
+            {/* Badges */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              <span
+                className="text-xs px-2.5 py-1 rounded-full font-medium"
+                style={{
+                  backgroundColor: STATUS_COLORS[result.project.status] + '33',
+                  color: STATUS_COLORS[result.project.status],
+                }}
+              >
+                {STATUS_LABELS[result.project.status]}
+              </span>
+              {result.project.category && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">
+                  {result.project.category}
+                </span>
+              )}
+            </div>
+
+            {/* Score bar */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-[var(--muted-foreground)]">Score</span>
+                <span className="text-sm font-bold font-mono" style={{ color: scoreTextColor }}>{score}</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${score}%`, background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }}
+                />
+              </div>
+            </div>
+
+            {/* Claude context sentence */}
+            {result.context && (
+              <div className="border-t border-[var(--card-border)] pt-5 mb-6">
+                <p className="text-sm italic text-[var(--muted-foreground)] leading-relaxed">
+                  {result.context}
+                </p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { router.push(`/projects/${result.project.id}/edit`); onClose() }}
+                className="flex-1 py-2.5 rounded-lg font-medium text-sm transition-colors"
+                style={{ background: 'var(--accent)', color: '#0f1117' }}
+              >
+                Zum Projekt →
+              </button>
+              <button
+                onClick={onRefresh}
+                className="px-4 py-2.5 rounded-lg font-medium text-sm border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+              >
+                Nochmal
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithScores[]>([])
   const [weights, setWeights] = useState<WeightsMap>({})
@@ -468,13 +613,23 @@ export default function Dashboard() {
   const [sort, setSort] = useState<SortOption>('score_desc')
   const [viewMode, setViewMode] = useState<ViewMode>('cards')
 
+  // Roulette
+  const [rouletteAvailable, setRouletteAvailable] = useState(false)
+  const [rouletteLoading, setRouletteLoading] = useState(false)
+  const [rouletteOpen, setRouletteOpen] = useState(false)
+  const [rouletteResult, setRouletteResult] = useState<RouletteResult | null>(null)
+  const [rouletteModalLoading, setRouletteModalLoading] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
   useEffect(() => {
     Promise.all([
       fetch('/api/projects').then((r) => r.json()),
       fetch('/api/settings').then((r) => r.json()),
-    ]).then(([projectsData, settingsData]) => {
+      fetch('/api/roulette/available').then((r) => r.json()),
+    ]).then(([projectsData, settingsData, availData]) => {
       setProjects(projectsData)
       setWeights(settingsData.weights || {})
+      setRouletteAvailable(availData.available === true)
       setLoading(false)
     })
   }, [])
@@ -539,6 +694,33 @@ export default function Dashboard() {
     URL.revokeObjectURL(url)
   }
 
+  const handleRoulette = async (fromModal = false) => {
+    if (fromModal) {
+      setRouletteModalLoading(true)
+      setRouletteResult(null)
+    } else {
+      setRouletteLoading(true)
+    }
+    try {
+      const energy = typeof window !== 'undefined' ? localStorage.getItem('energy') : null
+      const url = energy ? `/api/projects/roulette?energy=${encodeURIComponent(energy)}` : '/api/projects/roulette'
+      const res = await fetch(url)
+      if (!res.ok) {
+        if (!fromModal) {
+          setToast('Zu wenige bewertete Projekte für das Roulette.')
+          setTimeout(() => setToast(null), 4000)
+        }
+        return
+      }
+      const data: RouletteResult = await res.json()
+      setRouletteResult(data)
+      if (!fromModal) setRouletteOpen(true)
+    } finally {
+      setRouletteLoading(false)
+      setRouletteModalLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
@@ -577,6 +759,31 @@ export default function Dashboard() {
             >
               Review starten
             </Link>
+            {rouletteAvailable && projects.length >= 3 && (
+              <button
+                onClick={() => handleRoulette(false)}
+                disabled={rouletteLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-50"
+                title="Überrasch mich"
+              >
+                {rouletteLoading ? (
+                  <span
+                    className="w-4 h-4 rounded-full border-2 border-[var(--card-border)] animate-spin inline-block"
+                    style={{ borderTopColor: 'var(--accent)' }}
+                  />
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="3" />
+                    <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
+                    <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none" />
+                    <circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none" />
+                    <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none" />
+                    <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+                  </svg>
+                )}
+                Überrasch mich
+              </button>
+            )}
             <Link
               href="/projects/new"
               className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
@@ -709,6 +916,19 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Roulette modal */}
+      {rouletteOpen && (
+        <RouletteModal
+          result={rouletteResult}
+          modalLoading={rouletteModalLoading}
+          onClose={() => { setRouletteOpen(false); setRouletteResult(null) }}
+          onRefresh={() => handleRoulette(true)}
+        />
+      )}
+
+      {/* Error toast */}
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>
   )
 }
