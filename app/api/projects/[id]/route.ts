@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { calculateScore, DEFAULT_WEIGHTS } from '@/lib/criteria'
+import { calculateScore, DEFAULT_WEIGHTS, getProgressValue } from '@/lib/criteria'
 
 export async function GET(
   _request: NextRequest,
@@ -14,6 +14,7 @@ export async function GET(
         include: {
           scores: true,
           history: { orderBy: { createdAt: 'asc' } },
+          tasks: { orderBy: { order: 'asc' } },
         },
       }),
       prisma.settings.findUnique({ where: { id: 'singleton' } }),
@@ -28,6 +29,7 @@ export async function GET(
     for (const s of project.scores) {
       scoreMap[s.criterionId] = s.value
     }
+    scoreMap['progress'] = getProgressValue(project.tasks)
 
     return NextResponse.json({
       ...project,
@@ -67,13 +69,13 @@ export async function PUT(
 
       if (scores && typeof scores === 'object') {
         await tx.score.deleteMany({ where: { projectId: id } })
-        const scoreEntries = Object.entries(scores as Record<string, number>).map(
-          ([criterionId, value]) => ({
+        const scoreEntries = Object.entries(scores as Record<string, number>)
+          .filter(([criterionId]) => criterionId !== 'progress')
+          .map(([criterionId, value]) => ({
             projectId: id,
             criterionId,
             value: Number(value),
-          })
-        )
+          }))
         if (scoreEntries.length > 0) {
           await tx.score.createMany({ data: scoreEntries })
         }
@@ -81,7 +83,10 @@ export async function PUT(
 
       return tx.project.findUnique({
         where: { id },
-        include: { scores: true },
+        include: {
+          scores: true,
+          tasks: { orderBy: { order: 'asc' } },
+        },
       })
     })
 
@@ -91,6 +96,7 @@ export async function PUT(
     for (const s of project!.scores) {
       scoreMap[s.criterionId] = s.value
     }
+    scoreMap['progress'] = getProgressValue(project!.tasks ?? [])
 
     const computed = calculateScore(scoreMap, weights)
 

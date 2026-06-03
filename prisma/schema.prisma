@@ -18,6 +18,18 @@ model Project {
   updatedAt   DateTime       @updatedAt
   scores      Score[]
   history     ScoreHistory[]
+  tasks       Task[]
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  text      String
+  done      Boolean  @default(false)
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ScoreHistory {

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { calculateScore, DEFAULT_WEIGHTS } from '@/lib/criteria'
+import { calculateScore, DEFAULT_WEIGHTS, getProgressValue } from '@/lib/criteria'
 
 export async function GET() {
   try {
     const [projects, settings] = await Promise.all([
-      prisma.project.findMany({ include: { scores: true } }),
+      prisma.project.findMany({
+        include: {
+          scores: true,
+          tasks: { orderBy: { order: 'asc' } },
+        },
+      }),
       prisma.settings.findUnique({ where: { id: 'singleton' } }),
     ])
 
@@ -16,6 +21,7 @@ export async function GET() {
       for (const s of project.scores) {
         scoreMap[s.criterionId] = s.value
       }
+      scoreMap['progress'] = getProgressValue(project.tasks)
       return {
         ...project,
         computedScore: calculateScore(scoreMap, weights),
@@ -52,19 +58,22 @@ export async function POST(request: NextRequest) {
       })
 
       if (scores && typeof scores === 'object') {
-        const scoreEntries = Object.entries(scores as Record<string, number>).map(
-          ([criterionId, value]) => ({
+        const scoreEntries = Object.entries(scores as Record<string, number>)
+          .filter(([criterionId]) => criterionId !== 'progress')
+          .map(([criterionId, value]) => ({
             projectId: created.id,
             criterionId,
             value: Number(value),
-          })
-        )
+          }))
         await tx.score.createMany({ data: scoreEntries })
       }
 
       return tx.project.findUnique({
         where: { id: created.id },
-        include: { scores: true },
+        include: {
+          scores: true,
+          tasks: { orderBy: { order: 'asc' } },
+        },
       })
     })
 
@@ -74,6 +83,7 @@ export async function POST(request: NextRequest) {
     for (const s of project!.scores) {
       scoreMap[s.criterionId] = s.value
     }
+    scoreMap['progress'] = getProgressValue(project!.tasks ?? [])
     const computed = calculateScore(scoreMap, weights)
 
     await prisma.scoreHistory.create({

@@ -101,6 +101,18 @@ export function calculateScore(
   return Math.round((weightedSum / (totalWeight * 5)) * 100)
 }
 
+// Derives the 0–4 index for the 'progress' criterion from task completion.
+// Uses a structural type to avoid importing Prisma client into browser bundles.
+export function getProgressValue(tasks: { done: boolean }[]): number {
+  if (tasks.length === 0) return 2
+  const ratio = tasks.filter((t) => t.done).length / tasks.length
+  if (ratio === 0) return 0
+  if (ratio <= 0.25) return 1
+  if (ratio <= 0.75) return 2
+  if (ratio < 1) return 3
+  return 4
+}
+
 export function getScoreColor(score: number): string {
   if (score <= 40) return 'green'
   if (score <= 65) return 'amber'
