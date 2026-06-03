@@ -97,6 +97,7 @@ export default function EditProjectPage() {
           onSubmit={handleSubmit}
           submitLabel="Änderungen speichern"
           history={project.history}
+          projectId={id}
         />
       </div>
     </div>

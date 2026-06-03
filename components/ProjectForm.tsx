@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { CRITERIA, calculateScore, getScoreColor } from '@/lib/criteria'
+import { CRITERIA, calculateScore, getScoreColor, getProgressValue } from '@/lib/criteria'
 import type { Status, ScoreHistoryEntry } from '@/lib/types'
 import ScoreHistoryChart from './ScoreHistoryChart'
 
@@ -12,6 +12,16 @@ const STATUS_LABELS: Record<Status, string> = {
   ACTIVE: 'Aktiv',
   PAUSED: 'Pausiert',
   DONE: 'Fertig',
+}
+
+const PROGRESS_LABELS = ['Idee', 'Gestartet', 'Halbzeit', 'Fast fertig', 'Letzter Schliff']
+const MAX_TASKS = 25
+
+interface Task {
+  id: string
+  text: string
+  done: boolean
+  order: number
 }
 
 export interface ProjectFormData {
@@ -28,10 +38,19 @@ interface ProjectFormProps {
   onSubmit: (data: ProjectFormData) => Promise<void>
   submitLabel: string
   history?: ScoreHistoryEntry[]
+  projectId?: string
 }
 
-export default function ProjectForm({ initialData, onSubmit, submitLabel, history }: ProjectFormProps) {
+export default function ProjectForm({
+  initialData,
+  onSubmit,
+  submitLabel,
+  history,
+  projectId,
+}: ProjectFormProps) {
   const router = useRouter()
+
+  // Project fields
   const [name, setName] = useState(initialData?.name ?? '')
   const [description, setDescription] = useState(initialData?.description ?? '')
   const [status, setStatus] = useState<Status>(initialData?.status ?? 'IDEA')
@@ -45,6 +64,16 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel, histor
   const [existingCategories, setExistingCategories] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Task state
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [tasksLoading, setTasksLoading] = useState(false)
+  const [newTaskText, setNewTaskText] = useState('')
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editingTaskText, setEditingTaskText] = useState('')
+  const addInputRef = useRef<HTMLInputElement>(null)
+  // Prevent blur from double-firing after Enter
+  const addingRef = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -64,22 +93,98 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel, histor
     })
   }, [])
 
-  const liveScore = useMemo(() => calculateScore(scores, weights), [scores, weights])
+  useEffect(() => {
+    if (!projectId) return
+    setTasksLoading(true)
+    fetch(`/api/projects/${projectId}/tasks`)
+      .then((r) => r.json())
+      .then((data: Task[]) => {
+        setTasks(data)
+        setTasksLoading(false)
+      })
+  }, [projectId])
+
+  // Live score — inject task-derived progress so the header reflects reality
+  const liveScore = useMemo(() => {
+    const adjustedScores = { ...scores, progress: getProgressValue(tasks) }
+    return calculateScore(adjustedScores, weights)
+  }, [scores, weights, tasks])
+
   const scoreColor = getScoreColor(liveScore)
-
   const scoreColorClass =
-    scoreColor === 'green'
-      ? 'text-green-400'
-      : scoreColor === 'amber'
-      ? 'text-amber-400'
-      : 'text-blue-400'
-
+    scoreColor === 'green' ? 'text-green-400' : scoreColor === 'amber' ? 'text-amber-400' : 'text-blue-400'
   const scoreBarColor =
     scoreColor === 'green'
       ? 'linear-gradient(90deg, #22c55e, #16a34a)'
       : scoreColor === 'amber'
       ? 'linear-gradient(90deg, #f59e0b, #d97706)'
       : 'linear-gradient(90deg, #3b82f6, #2563eb)'
+
+  const progressLabel = PROGRESS_LABELS[getProgressValue(tasks)]
+
+  // ── Task handlers ──────────────────────────────────────────────────────────
+
+  const handleAddTask = async () => {
+    if (addingRef.current || !newTaskText.trim() || !projectId) return
+    addingRef.current = true
+    const text = newTaskText.trim()
+    setNewTaskText('')
+    try {
+      const res = await fetch(`/api/projects/${projectId}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      if (res.ok) {
+        const task: Task = await res.json()
+        setTasks((prev) => [...prev, task])
+      } else {
+        setNewTaskText(text) // restore on failure
+      }
+    } finally {
+      addingRef.current = false
+    }
+  }
+
+  const handleToggleDone = async (taskId: string, done: boolean) => {
+    // Optimistic update
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, done } : t)))
+    const res = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done }),
+    })
+    if (!res.ok) {
+      // Revert on failure
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, done: !done } : t)))
+    }
+  }
+
+  const startEditing = (task: Task) => {
+    setEditingTaskId(task.id)
+    setEditingTaskText(task.text)
+  }
+
+  const handleEditSave = async (taskId: string) => {
+    const text = editingTaskText.trim()
+    setEditingTaskId(null)
+    if (!text) return
+    const original = tasks.find((t) => t.id === taskId)
+    if (original && text === original.text) return
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, text } : t)))
+    await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    await fetch(`/api/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' })
+  }
+
+  // ── Form submit ────────────────────────────────────────────────────────────
 
   const handleScoreChange = (criterionId: string, value: number) => {
     setScores((prev) => ({ ...prev, [criterionId]: value }))
@@ -132,7 +237,11 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel, histor
                 </p>
               )}
             </div>
-            <span className={`text-xs tabular-nums ${name.length > matrixLabelMaxLength ? 'text-amber-400' : 'text-[var(--muted-foreground)]'}`}>
+            <span
+              className={`text-xs tabular-nums ${
+                name.length > matrixLabelMaxLength ? 'text-amber-400' : 'text-[var(--muted-foreground)]'
+              }`}
+            >
               {name.length}
             </span>
           </div>
@@ -204,7 +313,7 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel, histor
         </div>
       </div>
 
-      {/* Criteria scoring */}
+      {/* Criteria scoring — progress is excluded (auto-derived from tasks) */}
       <div className="rounded-xl border border-[var(--card-border)] p-6" style={{ background: 'var(--card)' }}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
@@ -225,7 +334,7 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel, histor
         </div>
 
         <div className="space-y-6">
-          {CRITERIA.map((criterion) => {
+          {CRITERIA.filter((c) => c.id !== 'progress').map((criterion) => {
             const currentValue = scores[criterion.id] ?? 0
             return (
               <div key={criterion.id}>
@@ -263,6 +372,106 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel, histor
           })}
         </div>
       </div>
+
+      {/* Tasks — only shown when editing an existing project */}
+      {projectId && (
+        <div className="rounded-xl border border-[var(--card-border)] p-6" style={{ background: 'var(--card)' }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-4">
+            Tasks
+          </h2>
+
+          {tasksLoading ? (
+            <p className="text-xs text-[var(--muted-foreground)] animate-pulse">Lade Tasks…</p>
+          ) : (
+            <>
+              {/* Task list */}
+              {tasks.length > 0 && (
+                <ul className="space-y-1 mb-3">
+                  {tasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className="flex items-center gap-2 group py-1"
+                    >
+                      {/* Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={task.done}
+                        onChange={() => handleToggleDone(task.id, !task.done)}
+                        className="w-4 h-4 shrink-0 accent-amber-500 cursor-pointer"
+                      />
+
+                      {/* Inline-editable text */}
+                      {editingTaskId === task.id ? (
+                        <input
+                          autoFocus
+                          value={editingTaskText}
+                          onChange={(e) => setEditingTaskText(e.target.value)}
+                          onBlur={() => handleEditSave(task.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); handleEditSave(task.id) }
+                            if (e.key === 'Escape') setEditingTaskId(null)
+                          }}
+                          className="flex-1 px-2 py-0.5 text-sm rounded border border-[var(--accent)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => startEditing(task)}
+                          className={`flex-1 text-sm cursor-text select-none transition-opacity ${
+                            task.done
+                              ? 'line-through opacity-40'
+                              : 'text-[var(--foreground)] hover:text-[var(--accent)]'
+                          }`}
+                        >
+                          {task.text}
+                        </span>
+                      )}
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all"
+                        title="Task löschen"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Add task input or limit note */}
+              {tasks.length < MAX_TASKS ? (
+                <input
+                  ref={addInputRef}
+                  type="text"
+                  value={newTaskText}
+                  onChange={(e) => setNewTaskText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddTask()
+                    }
+                  }}
+                  onBlur={handleAddTask}
+                  placeholder="+ Task hinzufügen"
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-dashed border-[var(--card-border)] bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+              ) : (
+                <p className="text-xs text-[var(--muted-foreground)] italic">
+                  Maximum erreicht (25 Tasks)
+                </p>
+              )}
+
+              {/* Finishing Energy indicator */}
+              <p className="text-xs text-[var(--muted-foreground)] mt-3">
+                Finishing Energy wird automatisch berechnet · aktuell:{' '}
+                <span className="text-[var(--foreground)] font-medium">{progressLabel}</span>
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Score history */}
       {history && history.length >= 1 && (
