@@ -28,6 +28,7 @@ model Score {
 }
 
 model Settings {
-  id      String @id @default("singleton")
-  weights String
+  id                   String @id @default("singleton")
+  weights              String
+  matrixLabelMaxLength Int    @default(20)
 }

@@ -39,6 +39,7 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel }: Proj
     initialData?.scores ?? Object.fromEntries(CRITERIA.map((c) => [c.id, 0]))
   )
   const [weights, setWeights] = useState<Record<string, number>>({})
+  const [matrixLabelMaxLength, setMatrixLabelMaxLength] = useState(20)
   const [existingCategories, setExistingCategories] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -49,6 +50,7 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel }: Proj
       fetch('/api/projects').then((r) => r.json()),
     ]).then(([settingsData, projectsData]) => {
       setWeights(settingsData.weights ?? {})
+      setMatrixLabelMaxLength(settingsData.matrixLabelMaxLength ?? 20)
       const cats = Array.from(
         new Set(
           (projectsData as Array<{ category: string | null }>)
@@ -120,6 +122,18 @@ export default function ProjectForm({ initialData, onSubmit, submitLabel }: Proj
             }`}
           />
           {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+          <div className="flex items-center justify-between mt-1">
+            <div>
+              {name.length > matrixLabelMaxLength && (
+                <p className="text-amber-400 text-xs">
+                  Dieser Name wird in der Matrixansicht möglicherweise abgeschnitten.
+                </p>
+              )}
+            </div>
+            <span className={`text-xs tabular-nums ${name.length > matrixLabelMaxLength ? 'text-amber-400' : 'text-[var(--muted-foreground)]'}`}>
+              {name.length}
+            </span>
+          </div>
         </div>
 
         {/* Description */}
