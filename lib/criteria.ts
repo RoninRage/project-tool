@@ -63,6 +63,13 @@ export const CRITERIA: Criterion[] = [
     inverted: true,
     options: ['trivial', 'einfach', 'mittel', 'komplex', 'unklar'],
   },
+  {
+    id: 'progress',
+    name: 'Projektfortschritt',
+    description: 'Wie weit ist das Projekt bereits?',
+    inverted: false,
+    options: ['Idee', 'Gestartet', 'Halbzeit', 'Fast fertig', 'Letzter Schliff'],
+  },
 ]
 
 export const DEFAULT_WEIGHTS: Record<string, number> = {
@@ -74,6 +81,7 @@ export const DEFAULT_WEIGHTS: Record<string, number> = {
   learning: 1.5,
   dependency: 1.5,
   complexity: 1,
+  progress: 2,
 }
 
 export function calculateScore(
