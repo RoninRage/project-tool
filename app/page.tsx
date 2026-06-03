@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CRITERIA, calculateScore, getScoreColor } from '@/lib/criteria'
+import { CRITERIA, calculateScore, getScoreColor, getProgressValue } from '@/lib/criteria'
 import type { ProjectWithScores, WeightsMap } from '@/lib/types'
 import type { Status } from '@/lib/types'
 
@@ -22,6 +22,8 @@ const STATUS_LABELS: Record<Status, string> = {
   PAUSED: 'Pausiert',
   DONE: 'Fertig',
 }
+
+const PROGRESS_LABELS = ['Idee', 'Gestartet', 'Halbzeit', 'Fast fertig', 'Letzter Schliff']
 
 type SortOption = 'score_desc' | 'score_asc' | 'updated' | 'name'
 type ViewMode = 'cards' | 'matrix'
@@ -121,6 +123,9 @@ function ProjectCard({
   }
   const top2 = getTop2Criteria(scoreMap, weights)
   const breakdown = getScoreBreakdown(scoreMap, weights)
+  const taskTotal = project.tasks?.length ?? 0
+  const taskDone = project.tasks?.filter((t) => t.done).length ?? 0
+  const taskLabel = PROGRESS_LABELS[getProgressValue(project.tasks ?? [])]
 
   const scoreTextColor =
     color === 'green'
@@ -261,31 +266,41 @@ function ProjectCard({
                 {/* Criterion name */}
                 <span className="w-28 shrink-0 text-[var(--foreground)] truncate">{criterion.name}</span>
 
-                {/* Option label */}
-                <span className="w-12 shrink-0 text-[var(--muted-foreground)] font-mono">
-                  {optionLabel ?? '–'}
-                </span>
-
-                {/* Contribution bar + pct */}
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <div className="flex-1 h-1.5 rounded-full bg-slate-700 overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: contribution !== null ? `${(contribution / maxContribution) * 100}%` : '0%',
-                        background:
-                          direction === 'up'
-                            ? '#22c55e'
-                            : direction === 'down'
-                            ? '#ef4444'
-                            : '#6b7280',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[var(--muted-foreground)] w-7 text-right tabular-nums shrink-0">
-                    {contribution !== null ? `${contribution.toFixed(0)}%` : '–'}
+                {/* Option label — progress criterion shows auto-derived task context */}
+                {criterion.id === 'progress' ? (
+                  <span className="flex-1 text-[var(--muted-foreground)] italic truncate">
+                    {taskTotal > 0
+                      ? `Automatisch · ${taskDone} von ${taskTotal} Tasks abgeschlossen`
+                      : 'Automatisch · keine Tasks → neutral gewertet'}
                   </span>
-                </div>
+                ) : (
+                  <>
+                    <span className="w-12 shrink-0 text-[var(--muted-foreground)] font-mono">
+                      {optionLabel ?? '–'}
+                    </span>
+
+                    {/* Contribution bar + pct */}
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: contribution !== null ? `${(contribution / maxContribution) * 100}%` : '0%',
+                            background:
+                              direction === 'up'
+                                ? '#22c55e'
+                                : direction === 'down'
+                                ? '#ef4444'
+                                : '#6b7280',
+                          }}
+                        />
+                      </div>
+                      <span className="text-[var(--muted-foreground)] w-7 text-right tabular-nums shrink-0">
+                        {contribution !== null ? `${contribution.toFixed(0)}%` : '–'}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -297,6 +312,14 @@ function ProjectCard({
         <div className="text-xs text-[var(--muted-foreground)]">
           <span className="text-[var(--foreground)] font-medium">Nächster Schritt: </span>
           {project.nextStep}
+        </div>
+      )}
+
+      {/* Task summary */}
+      {taskTotal > 0 && (
+        <div className="text-xs text-[var(--muted-foreground)]">
+          ✓ {taskDone} von {taskTotal} Tasks · Finishing Energy:{' '}
+          <span className="text-[var(--foreground)]">{taskLabel}</span>
         </div>
       )}
 

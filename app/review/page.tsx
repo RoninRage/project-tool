@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getScoreColor } from '@/lib/criteria'
+import { getScoreColor, getProgressValue } from '@/lib/criteria'
 import type { ProjectWithScores } from '@/lib/types'
 import type { Status } from '@/lib/types'
 
@@ -223,6 +223,16 @@ export default function ReviewPage() {
                   style={{ width: `${score}%`, background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }}
                 />
               </div>
+              {project.tasks && project.tasks.length > 0 && (() => {
+                const total = project.tasks!.length
+                const done = project.tasks!.filter((t) => t.done).length
+                const open = total - done
+                return (
+                  <p className="text-xs text-[var(--muted-foreground)] mt-2">
+                    ✓ {done} von {total} Tasks erledigt &nbsp;|&nbsp; {open} offen
+                  </p>
+                )
+              })()}
             </div>
 
             {/* Next step */}
