@@ -549,6 +549,12 @@ export default function Dashboard() {
               </svg>
             </Link>
             <Link
+              href="/review"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+            >
+              Review starten
+            </Link>
+            <Link
               href="/projects/new"
               className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
               style={{ background: 'var(--accent)', color: '#0f1117' }}
