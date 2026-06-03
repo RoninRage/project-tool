@@ -42,6 +42,25 @@ function formatRelativeTime(date: string): string {
   return `vor ${diffDays} Tagen`
 }
 
+function getScoreBreakdown(scores: Record<string, number>, weights: Record<string, number>) {
+  let totalWeight = 0
+  for (const c of CRITERIA) totalWeight += weights[c.id] ?? 1
+  const maxTotal = totalWeight * 5
+
+  return CRITERIA.map((c) => {
+    const value = scores[c.id]
+    const hasScore = value !== undefined
+    const rawScore = hasScore ? (c.inverted ? 5 - value : value + 1) : null
+    const w = weights[c.id] ?? 1
+    const contribution = rawScore !== null ? (rawScore * w) / maxTotal * 100 : null
+    const maxContribution = (5 * w) / maxTotal * 100
+    const optionLabel = hasScore ? c.options[value] : null
+    const direction =
+      rawScore === null ? null : rawScore > 3 ? 'up' : rawScore < 3 ? 'down' : 'neutral'
+    return { criterion: c, optionLabel, contribution, maxContribution, direction, hasScore }
+  })
+}
+
 function getTop2Criteria(scores: Record<string, number>, weights: Record<string, number>) {
   const contributions = CRITERIA.map((c) => {
     const value = scores[c.id] ?? 0
@@ -93,6 +112,7 @@ function ProjectCard({
   onDelete: (id: string) => void
 }) {
   const router = useRouter()
+  const [showBreakdown, setShowBreakdown] = useState(false)
   const score = project.computedScore ?? 0
   const color = getScoreColor(score)
   const scoreMap: Record<string, number> = {}
@@ -100,6 +120,7 @@ function ProjectCard({
     scoreMap[s.criterionId] = s.value
   }
   const top2 = getTop2Criteria(scoreMap, weights)
+  const breakdown = getScoreBreakdown(scoreMap, weights)
 
   const scoreTextColor =
     color === 'green'
@@ -188,7 +209,28 @@ function ProjectCard({
       {/* Score */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs text-[var(--muted-foreground)]">Score</span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-[var(--muted-foreground)]">Score</span>
+            <button
+              type="button"
+              onClick={() => setShowBreakdown((v) => !v)}
+              className="p-0.5 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+              title="Warum dieser Score?"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="transition-transform duration-200"
+                style={{ transform: showBreakdown ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
           <span className={`font-mono text-sm font-bold ${scoreTextColor}`}>{score}</span>
         </div>
         <ScoreBar score={score} />
@@ -202,6 +244,52 @@ function ProjectCard({
             </span>
           ))}
         </div>
+
+        {/* Score breakdown */}
+        {showBreakdown && (
+          <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-1.5">
+            {breakdown.map(({ criterion, optionLabel, contribution, maxContribution, direction }) => (
+              <div key={criterion.id} className="flex items-center gap-2 text-xs">
+                {/* Direction arrow */}
+                <span className="w-3 shrink-0 text-center">
+                  {direction === 'up' && <span className="text-green-400">↑</span>}
+                  {direction === 'down' && <span className="text-red-400">↓</span>}
+                  {direction === 'neutral' && <span className="text-[var(--muted-foreground)]">–</span>}
+                  {direction === null && <span className="text-[var(--muted-foreground)]">·</span>}
+                </span>
+
+                {/* Criterion name */}
+                <span className="w-28 shrink-0 text-[var(--foreground)] truncate">{criterion.name}</span>
+
+                {/* Option label */}
+                <span className="w-12 shrink-0 text-[var(--muted-foreground)] font-mono">
+                  {optionLabel ?? '–'}
+                </span>
+
+                {/* Contribution bar + pct */}
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className="flex-1 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: contribution !== null ? `${(contribution / maxContribution) * 100}%` : '0%',
+                        background:
+                          direction === 'up'
+                            ? '#22c55e'
+                            : direction === 'down'
+                            ? '#ef4444'
+                            : '#6b7280',
+                      }}
+                    />
+                  </div>
+                  <span className="text-[var(--muted-foreground)] w-7 text-right tabular-nums shrink-0">
+                    {contribution !== null ? `${contribution.toFixed(0)}%` : '–'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Next step */}
