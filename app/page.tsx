@@ -218,11 +218,11 @@ function ProjectCard({
         >
           {STATUS_LABELS[project.status]}
         </span>
-        {project.category && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
-            {project.category}
+        {(project.tags ?? []).map((tag) => (
+          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
+            {tag}
           </span>
-        )}
+        ))}
       </div>
 
       {/* Score */}
@@ -478,7 +478,7 @@ interface RouletteProject {
   name: string
   description: string | null
   status: Status
-  category: string | null
+  tags: string[]
   nextStep: string | null
   computedScore: number
 }
@@ -566,8 +566,12 @@ function CompareModal({
                   return (
                     <th key={project.id} className="pb-4 px-3 text-left align-top">
                       <div className="font-semibold text-[var(--foreground)] leading-tight">{project.name}</div>
-                      {project.category && (
-                        <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{project.category}</div>
+                      {(project.tags ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {(project.tags ?? []).map((tag) => (
+                            <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">{tag}</span>
+                          ))}
+                        </div>
                       )}
                       <div className="flex items-center gap-2 mt-2">
                         <span
@@ -715,11 +719,11 @@ function RouletteModal({
               >
                 {STATUS_LABELS[result.project.status]}
               </span>
-              {result.project.category && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">
-                  {result.project.category}
+              {(result.project.tags ?? []).map((tag) => (
+                <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">
+                  {tag}
                 </span>
-              )}
+              ))}
             </div>
 
             {/* Score bar */}
@@ -774,7 +778,7 @@ export default function Dashboard() {
   const [weights, setWeights] = useState<WeightsMap>({})
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<Status | 'ALL'>('ACTIVE')
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
+  const [tagFilter, setTagFilter] = useState<string[]>([])
   const [sort, setSort] = useState<SortOption>('score_desc')
   const [viewMode, setViewMode] = useState<ViewMode>('cards')
 
@@ -809,9 +813,8 @@ export default function Dashboard() {
     })
   }, [])
 
-  const categories = useMemo(() => {
-    const cats = Array.from(new Set(projects.map((p) => p.category).filter(Boolean))) as string[]
-    return cats.sort()
+  const allTags = useMemo(() => {
+    return Array.from(new Set(projects.flatMap((p) => p.tags ?? []))).sort()
   }, [projects])
 
   const filtered = useMemo(() => {
@@ -819,8 +822,8 @@ export default function Dashboard() {
     if (statusFilter !== 'ALL') {
       result = result.filter((p) => p.status === statusFilter)
     }
-    if (categoryFilter !== 'ALL') {
-      result = result.filter((p) => p.category === categoryFilter)
+    if (tagFilter.length > 0) {
+      result = result.filter((p) => tagFilter.some((t) => (p.tags ?? []).includes(t)))
     }
     switch (sort) {
       case 'score_desc':
@@ -839,7 +842,7 @@ export default function Dashboard() {
         break
     }
     return result
-  }, [projects, statusFilter, categoryFilter, sort])
+  }, [projects, statusFilter, tagFilter, sort])
 
   const handleDelete = (id: string) => {
     setProjects((prev) => prev.filter((p) => p.id !== id))
@@ -851,14 +854,14 @@ export default function Dashboard() {
       .map((p) => [
         `"${p.name.replace(/"/g, '""')}"`,
         STATUS_LABELS[p.status],
-        p.category ?? '',
+        `"${(p.tags ?? []).join(', ').replace(/"/g, '""')}"`,
         p.computedScore ?? 0,
         `"${(p.nextStep ?? '').replace(/"/g, '""')}"`,
         new Date(p.createdAt).toLocaleDateString('de-AT'),
         new Date(p.updatedAt).toLocaleDateString('de-AT'),
       ])
 
-    const header = ['Name', 'Status', 'Kategorie', 'Score', 'Nächster Schritt', 'Erstellt', 'Aktualisiert']
+    const header = ['Name', 'Status', 'Tags', 'Score', 'Nächster Schritt', 'Erstellt', 'Aktualisiert']
     const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -1011,18 +1014,38 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="flex gap-2 ml-auto items-center">
-            {/* Category dropdown */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-1.5 text-sm rounded-lg border border-[var(--card-border)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
-            >
-              <option value="ALL">Alle Kategorien</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+          <div className="flex gap-2 ml-auto items-center flex-wrap">
+            {/* Tag filter pills */}
+            {allTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setTagFilter((prev) =>
+                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )}
+                    className={`px-2.5 py-0.5 text-xs rounded-full font-medium transition-colors border ${
+                      tagFilter.includes(tag)
+                        ? 'bg-amber-500 border-amber-500 text-black'
+                        : 'border-[var(--card-border)] text-[var(--muted-foreground)] hover:border-amber-500/50 hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+                {tagFilter.length > 0 && (
+                  <button
+                    type="button"
+                    aria-label="Alle Tag-Filter entfernen"
+                    title="Alle Tag-Filter entfernen"
+                    onClick={() => setTagFilter([])}
+                    className="px-2.5 py-0.5 text-xs rounded-full border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Sort dropdown */}
             <select

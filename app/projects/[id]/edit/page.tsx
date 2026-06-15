@@ -71,7 +71,7 @@ export default function EditProjectPage() {
     name: project.name,
     description: project.description ?? '',
     status: project.status as Status,
-    category: project.category ?? '',
+    tags: project.tags ?? [],
     nextStep: project.nextStep ?? '',
     scores: scoreMap,
     completedAt: project.completedAt ? new Date(project.completedAt).toISOString().slice(0, 10) : '',

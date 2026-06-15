@@ -204,11 +204,11 @@ export default function ReviewPage() {
               >
                 {STATUS_LABELS[project.status]}
               </span>
-              {project.category && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">
-                  {project.category}
+              {(project.tags ?? []).map((tag) => (
+                <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">
+                  {tag}
                 </span>
-              )}
+              ))}
             </div>
 
             {/* Score */}

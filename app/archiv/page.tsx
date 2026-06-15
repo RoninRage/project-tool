@@ -95,8 +95,12 @@ export default function ArchivPage() {
                       >
                         {project.name}
                       </Link>
-                      {project.category && (
-                        <span className="text-xs text-[var(--muted-foreground)] mt-0.5 block">{project.category}</span>
+                      {(project.tags ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {(project.tags ?? []).map((tag) => (
+                            <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">{tag}</span>
+                          ))}
+                        </div>
                       )}
                     </div>
                     <div

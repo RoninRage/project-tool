@@ -24,6 +24,7 @@ export async function GET() {
       scoreMap['progress'] = getProgressValue(project.tasks)
       return {
         ...project,
+        tags: JSON.parse(project.tags),
         computedScore: calculateScore(scoreMap, weights),
       }
     })
@@ -40,7 +41,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description, status, category, nextStep, scores, completedAt, closingNote } = body
+    const { name, description, status, tags, nextStep, scores, completedAt, closingNote } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
           name,
           description: description || null,
           status: status || 'IDEA',
-          category: category || null,
+          tags: JSON.stringify(Array.isArray(tags) ? tags : []),
           nextStep: nextStep || null,
           completedAt: completedAt ? new Date(completedAt) : null,
           closingNote: closingNote || null,
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
       data: { projectId: project!.id, score: computed },
     })
 
-    return NextResponse.json({ ...project, computedScore: computed }, { status: 201 })
+    return NextResponse.json({ ...project, tags: JSON.parse(project!.tags), computedScore: computed }, { status: 201 })
   } catch (error) {
     console.error('POST /api/projects error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

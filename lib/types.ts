@@ -15,8 +15,9 @@ export interface TaskItem {
   order: number
 }
 
-export interface ProjectWithScores extends Omit<Project, 'status' | 'completedAt' | 'closingNote'> {
+export interface ProjectWithScores extends Omit<Project, 'status' | 'completedAt' | 'closingNote' | 'tags'> {
   status: Status
+  tags: string[]
   scores: Score[]
   computedScore?: number
   history?: ScoreHistoryEntry[]
