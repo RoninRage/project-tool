@@ -854,7 +854,7 @@ export default function Dashboard() {
       .map((p) => [
         `"${p.name.replace(/"/g, '""')}"`,
         STATUS_LABELS[p.status],
-        `"${(p.tags ?? []).join(', ')}"`,
+        `"${(p.tags ?? []).join(', ').replace(/"/g, '""')}"`,
         p.computedScore ?? 0,
         `"${(p.nextStep ?? '').replace(/"/g, '""')}"`,
         new Date(p.createdAt).toLocaleDateString('de-AT'),
@@ -1035,6 +1035,9 @@ export default function Dashboard() {
                 ))}
                 {tagFilter.length > 0 && (
                   <button
+                    type="button"
+                    aria-label="Alle Tag-Filter entfernen"
+                    title="Alle Tag-Filter entfernen"
                     onClick={() => setTagFilter([])}
                     className="px-2.5 py-0.5 text-xs rounded-full border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                   >
