@@ -42,11 +42,21 @@ export async function GET() {
         ? `Task progress: ${doneCount} of ${taskCount} tasks completed (${Math.round((doneCount / taskCount) * 100)}%). Finishing Energy: ${progressLabel}.`
         : 'No tasks defined yet.'
 
+    let parsedTags: string[] = []
+    try {
+      const maybeParsed = JSON.parse(project.tags)
+      if (Array.isArray(maybeParsed)) {
+        parsedTags = maybeParsed.filter((tag): tag is string => typeof tag === 'string')
+      }
+    } catch {
+      parsedTags = []
+    }
+
     const promptLines = [
       `Project: ${project.name}`,
       project.description ? `Description: ${project.description}` : null,
       `Status: ${project.status}`,
-      project.tags ? `Tags: ${JSON.parse(project.tags).join(', ')}` : null,
+      parsedTags.length > 0 ? `Tags: ${parsedTags.join(', ')}` : null,
       project.nextStep ? `Next step: ${project.nextStep}` : null,
       `Score: ${computedScore}/100`,
       taskContext,
@@ -79,7 +89,7 @@ export async function GET() {
         name: project.name,
         description: project.description,
         status: project.status,
-        tags: JSON.parse(project.tags),
+        tags: parsedTags,
         nextStep: project.nextStep,
         computedScore,
         tasks: project.tasks,
