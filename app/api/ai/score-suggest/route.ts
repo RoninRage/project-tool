@@ -45,8 +45,11 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    const raw = (message.content[0] as { type: string; text: string }).text.trim()
-    const parsed = JSON.parse(raw)
+    const responseText = (message.content[0] as { type: string; text: string }).text
+    // Extract the JSON object regardless of any surrounding markdown fences or text
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('No JSON object found in response')
+    const parsed = JSON.parse(jsonMatch[0])
 
     const validIds = new Set(CRITERIA.filter((c) => c.id !== 'progress').map((c) => c.id))
     const suggestions: Record<string, number> = {}
