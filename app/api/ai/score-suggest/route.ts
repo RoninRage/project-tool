@@ -45,7 +45,9 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    const raw = (message.content[0] as { type: string; text: string }).text.trim()
+    let raw = (message.content[0] as { type: string; text: string }).text.trim()
+    // Strip markdown code fences if Haiku wraps the response
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     const parsed = JSON.parse(raw)
 
     const validIds = new Set(CRITERIA.filter((c) => c.id !== 'progress').map((c) => c.id))
