@@ -12,7 +12,7 @@ model Project {
   name        String
   description String?
   status      String         @default("IDEA")
-  category    String?
+  tags        String         @default("[]")
   nextStep    String?
   completedAt DateTime?
   closingNote String?

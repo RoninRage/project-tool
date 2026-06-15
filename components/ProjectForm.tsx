@@ -28,7 +28,7 @@ export interface ProjectFormData {
   name: string
   description: string
   status: Status
-  category: string
+  tags: string[]
   nextStep: string
   scores: Record<string, number>
   completedAt?: string
@@ -56,7 +56,9 @@ export default function ProjectForm({
   const [name, setName] = useState(initialData?.name ?? '')
   const [description, setDescription] = useState(initialData?.description ?? '')
   const [status, setStatus] = useState<Status>(initialData?.status ?? 'IDEA')
-  const [category, setCategory] = useState(initialData?.category ?? '')
+  const [tags, setTags] = useState<string[]>(initialData?.tags ?? [])
+  const [tagInput, setTagInput] = useState('')
+  const [allTags, setAllTags] = useState<string[]>([])
   const [nextStep, setNextStep] = useState(initialData?.nextStep ?? '')
   const [completedAt, setCompletedAt] = useState(initialData?.completedAt ?? '')
   const [closingNote, setClosingNote] = useState(initialData?.closingNote ?? '')
@@ -65,7 +67,6 @@ export default function ProjectForm({
   )
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [matrixLabelMaxLength, setMatrixLabelMaxLength] = useState(20)
-  const [existingCategories, setExistingCategories] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -100,14 +101,10 @@ export default function ProjectForm({
     ]).then(([settingsData, projectsData, aiData]) => {
       setWeights(settingsData.weights ?? {})
       setMatrixLabelMaxLength(settingsData.matrixLabelMaxLength ?? 20)
-      const cats = Array.from(
-        new Set(
-          (projectsData as Array<{ category: string | null }>)
-            .map((p) => p.category)
-            .filter(Boolean)
-        )
-      ) as string[]
-      setExistingCategories(cats)
+      const allProjectTags = Array.from(
+        new Set((projectsData as Array<{ tags: string[] }>).flatMap((p) => p.tags ?? []))
+      ).sort()
+      setAllTags(allProjectTags)
       setAiAvailable(aiData.available === true)
     })
   }, [])
@@ -321,7 +318,7 @@ export default function ProjectForm({
     }
     setSubmitting(true)
     try {
-      await onSubmit({ name: name.trim(), description, status, category, nextStep, scores, completedAt: completedAt || undefined, closingNote: closingNote || undefined })
+      await onSubmit({ name: name.trim(), description, status, tags, nextStep, scores, completedAt: completedAt || undefined, closingNote: closingNote || undefined })
     } catch {
       setSubmitting(false)
     }
@@ -401,19 +398,54 @@ export default function ProjectForm({
 
           <div>
             <label className="block text-sm font-medium text-[var(--foreground)] mb-1.5">
-              Kategorie
+              Tags
             </label>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium bg-amber-500/20 border border-amber-500/40 text-amber-300"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
+                      className="leading-none hover:text-white transition-colors"
+                      aria-label={`Tag ${tag} entfernen`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <input
               type="text"
-              list="categories-list"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="z.B. Homelab, Software…"
+              list="tags-list"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault()
+                  const val = tagInput.trim().replace(/,$/, '')
+                  if (val && !tags.includes(val)) setTags((prev) => [...prev, val])
+                  setTagInput('')
+                } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
+                  setTags((prev) => prev.slice(0, -1))
+                }
+              }}
+              onBlur={() => {
+                const val = tagInput.trim()
+                if (val && !tags.includes(val)) setTags((prev) => [...prev, val])
+                setTagInput('')
+              }}
+              placeholder={tags.length === 0 ? 'z.B. Homelab, Software… (Enter zum Hinzufügen)' : 'Weiteren Tag hinzufügen…'}
               className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors"
             />
-            <datalist id="categories-list">
-              {existingCategories.map((c) => (
-                <option key={c} value={c} />
+            <datalist id="tags-list">
+              {allTags.filter((t) => !tags.includes(t)).map((t) => (
+                <option key={t} value={t} />
               ))}
             </datalist>
           </div>

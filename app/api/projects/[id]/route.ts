@@ -33,6 +33,7 @@ export async function GET(
 
     return NextResponse.json({
       ...project,
+      tags: JSON.parse(project.tags),
       computedScore: calculateScore(scoreMap, weights),
     })
   } catch (error) {
@@ -48,7 +49,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, description, status, category, nextStep, scores, completedAt, closingNote } = body
+    const { name, description, status, tags, nextStep, scores, completedAt, closingNote } = body
 
     const existing = await prisma.project.findUnique({ where: { id } })
     if (!existing) {
@@ -62,7 +63,7 @@ export async function PUT(
           name: name ?? existing.name,
           description: description !== undefined ? description || null : existing.description,
           status: status ?? existing.status,
-          category: category !== undefined ? category || null : existing.category,
+          tags: tags !== undefined ? JSON.stringify(Array.isArray(tags) ? tags : []) : existing.tags,
           nextStep: nextStep !== undefined ? nextStep || null : existing.nextStep,
           completedAt: completedAt !== undefined ? (completedAt ? new Date(completedAt) : null) : existing.completedAt,
           closingNote: closingNote !== undefined ? closingNote || null : existing.closingNote,
@@ -108,6 +109,7 @@ export async function PUT(
 
     return NextResponse.json({
       ...project,
+      tags: JSON.parse(project!.tags),
       computedScore: computed,
     })
   } catch (error) {
