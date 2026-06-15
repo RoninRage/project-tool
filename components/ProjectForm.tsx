@@ -69,6 +69,13 @@ export default function ProjectForm({
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // AI score suggestion
+  const [aiAvailable, setAiAvailable] = useState(false)
+  const [aiText, setAiText] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, number> | null>(null)
+
   // Task state
   const [tasks, setTasks] = useState<Task[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
@@ -89,7 +96,8 @@ export default function ProjectForm({
     Promise.all([
       fetch('/api/settings').then((r) => r.json()),
       fetch('/api/projects').then((r) => r.json()),
-    ]).then(([settingsData, projectsData]) => {
+      fetch('/api/roulette/available').then((r) => r.json()),
+    ]).then(([settingsData, projectsData, aiData]) => {
       setWeights(settingsData.weights ?? {})
       setMatrixLabelMaxLength(settingsData.matrixLabelMaxLength ?? 20)
       const cats = Array.from(
@@ -100,6 +108,7 @@ export default function ProjectForm({
         )
       ) as string[]
       setExistingCategories(cats)
+      setAiAvailable(aiData.available === true)
     })
   }, [])
 
@@ -251,6 +260,49 @@ export default function ProjectForm({
         })
       )
     )
+  }
+
+  // ── AI score suggestion ───────────────────────────────────────────────────
+
+  const handleAiSuggest = async () => {
+    if (!aiText.trim() || aiLoading) return
+    setAiLoading(true)
+    setAiError(null)
+    setAiSuggestions(null)
+    try {
+      const res = await fetch('/api/ai/score-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: aiText, name }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAiError(data.error ?? 'Fehler beim Generieren des Vorschlags')
+      } else {
+        setAiSuggestions(data.suggestions)
+      }
+    } catch {
+      setAiError('Netzwerkfehler')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const acceptAiSuggestion = (criterionId: string) => {
+    if (aiSuggestions?.[criterionId] === undefined) return
+    setScores((prev) => ({ ...prev, [criterionId]: aiSuggestions[criterionId] }))
+    setAiSuggestions((prev) => {
+      if (!prev) return null
+      const next = { ...prev }
+      delete next[criterionId]
+      return Object.keys(next).length > 0 ? next : null
+    })
+  }
+
+  const acceptAllAiSuggestions = () => {
+    if (!aiSuggestions) return
+    setScores((prev) => ({ ...prev, ...aiSuggestions }))
+    setAiSuggestions(null)
   }
 
   // ── Form submit ────────────────────────────────────────────────────────────
@@ -411,6 +463,47 @@ export default function ProjectForm({
         </div>
       </div>
 
+      {/* AI Score-Vorschlag — only when ANTHROPIC_API_KEY is set */}
+      {aiAvailable && (
+        <div className="rounded-xl border border-[var(--card-border)] p-6 space-y-4" style={{ background: 'var(--card)' }}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              KI Score-Vorschlag
+            </h2>
+            {aiSuggestions && Object.keys(aiSuggestions).length > 0 && (
+              <button
+                type="button"
+                onClick={acceptAllAiSuggestions}
+                className="text-xs px-3 py-1 rounded-lg font-medium transition-colors"
+                style={{ background: 'var(--accent)', color: '#0f1117' }}
+              >
+                Alle übernehmen
+              </button>
+            )}
+          </div>
+          <textarea
+            value={aiText}
+            onChange={(e) => setAiText(e.target.value)}
+            placeholder="Beschreibe das Projekt in eigenen Worten – Claude schlägt dann Scores vor…"
+            rows={3}
+            className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none"
+          />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleAiSuggest}
+              disabled={!aiText.trim() || aiLoading}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--card-border)] text-[var(--foreground)] hover:border-[var(--accent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {aiLoading ? 'Analysiere…' : 'Vorschlag generieren'}
+            </button>
+            {aiError && (
+              <span className="text-xs text-red-400">{aiError}</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Criteria scoring — progress is excluded (auto-derived from tasks) */}
       <div className="rounded-xl border border-[var(--card-border)] p-6" style={{ background: 'var(--card)' }}>
         <div className="flex items-center justify-between mb-6">
@@ -465,6 +558,20 @@ export default function ProjectForm({
                     </button>
                   ))}
                 </div>
+                {aiSuggestions?.[criterion.id] !== undefined && aiSuggestions[criterion.id] !== currentValue && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-amber-400/80">
+                      KI: <span className="font-medium text-amber-400">{criterion.options[aiSuggestions[criterion.id]]}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => acceptAiSuggestion(criterion.id)}
+                      className="text-xs px-2 py-0.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                    >
+                      Übernehmen
+                    </button>
+                  </div>
+                )}
               </div>
             )
           })}
