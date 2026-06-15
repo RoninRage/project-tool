@@ -52,10 +52,10 @@ The computed score is **never persisted**. It's recalculated on demand — serve
 3. **AI: Nächster Schritt vorschlagen** — Detailseite: Button "Nächsten Schritt vorschlagen", Claude generiert basierend auf Name, Description, Status und Tasks einen konkreten nächsten Schritt. Ein-Klick-Übernahme. Prompt noch ausstehend.
 4. **AI: Review-Assistent** — Im Review-Ritual: Claude gibt pro Projekt eine kurze kontextuelle Einschätzung (Score, Zombie-Status, Task-Fortschritt) als Entscheidungshilfe. Prompt noch ausstehend.
 5. **AI: Projekt-Beschreibung generieren** — Im Formular: Button "Beschreibung vorschlagen", Claude generiert aus Titel + Scores einen Beschreibungstext. Prompt noch ausstehend.
-6. **AI: Kategorie-Vorschlag** — Beim Speichern: optionaler Vorschlag basierend auf bestehenden Kategorien + Projektname ("ähnelt Kategorie X — übernehmen?"). Prompt noch ausstehend.
+6. ~~**AI: Kategorie-Vorschlag**~~ ✓ — Ersetzt durch AI Tag-Vorschlag (siehe 7).
 
 ### Non-AI Features
-7. **Projekt-Tags** — Mehrere Tags pro Projekt (statt einzelnem Kategorie-Feld), filterbar im Dashboard. Ermöglicht orthogonale Klassifikation ("Homelab + Hardware", "Maker + Outdoor").
+7. ~~**Projekt-Tags**~~ ✓ — Mehrere Tags pro Projekt, filterbar im Dashboard (OR-Logik). KI-Vorschlag via Claude Haiku.
 8. ~~**Score-Vergleichsansicht**~~ ✓ — 2–3 Projekte nebeneinander mit allen Kriterien im Detail. Hilft bei Entscheidungen zwischen ähnlich bewerteten Projekten.
 9. ~~**Projekt-Archiv**~~ ✓ — Eigene Ansicht für DONE-Projekte mit Abschlussdatum, finalem Score und optionalem Abschluss-Notizfeld. Persönliche Historie statt einfach "weggefiltert".
 10. ~~**Tastaturnavigation**~~ ✓ — Shortcuts für häufige Aktionen: `N` neues Projekt, `R` Review starten, `?` Roulette, `Esc` Modal schließen. Passt zum Maker-Feeling des Tools.
