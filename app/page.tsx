@@ -608,7 +608,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithScores[]>([])
   const [weights, setWeights] = useState<WeightsMap>({})
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<Status | 'ALL'>('Aktiv')
+  const [statusFilter, setStatusFilter] = useState<Status | 'ALL'>('ACTIVE')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
   const [sort, setSort] = useState<SortOption>('score_desc')
   const [viewMode, setViewMode] = useState<ViewMode>('cards')
