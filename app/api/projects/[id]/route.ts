@@ -48,7 +48,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, description, status, category, nextStep, scores } = body
+    const { name, description, status, category, nextStep, scores, completedAt, closingNote } = body
 
     const existing = await prisma.project.findUnique({ where: { id } })
     if (!existing) {
@@ -64,6 +64,8 @@ export async function PUT(
           status: status ?? existing.status,
           category: category !== undefined ? category || null : existing.category,
           nextStep: nextStep !== undefined ? nextStep || null : existing.nextStep,
+          completedAt: completedAt !== undefined ? (completedAt ? new Date(completedAt) : null) : existing.completedAt,
+          closingNote: closingNote !== undefined ? closingNote || null : existing.closingNote,
         },
       })
 

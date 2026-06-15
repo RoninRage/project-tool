@@ -31,6 +31,8 @@ export interface ProjectFormData {
   category: string
   nextStep: string
   scores: Record<string, number>
+  completedAt?: string
+  closingNote?: string
 }
 
 interface ProjectFormProps {
@@ -56,6 +58,8 @@ export default function ProjectForm({
   const [status, setStatus] = useState<Status>(initialData?.status ?? 'IDEA')
   const [category, setCategory] = useState(initialData?.category ?? '')
   const [nextStep, setNextStep] = useState(initialData?.nextStep ?? '')
+  const [completedAt, setCompletedAt] = useState(initialData?.completedAt ?? '')
+  const [closingNote, setClosingNote] = useState(initialData?.closingNote ?? '')
   const [scores, setScores] = useState<Record<string, number>>(
     initialData?.scores ?? Object.fromEntries(CRITERIA.map((c) => [c.id, 0]))
   )
@@ -265,7 +269,7 @@ export default function ProjectForm({
     }
     setSubmitting(true)
     try {
-      await onSubmit({ name: name.trim(), description, status, category, nextStep, scores })
+      await onSubmit({ name: name.trim(), description, status, category, nextStep, scores, completedAt: completedAt || undefined, closingNote: closingNote || undefined })
     } catch {
       setSubmitting(false)
     }
@@ -362,6 +366,35 @@ export default function ProjectForm({
             </datalist>
           </div>
         </div>
+
+        {/* Archive fields — only shown when status is DONE */}
+        {status === 'DONE' && (
+          <div className="space-y-4 pt-1">
+            <div>
+              <label className="block text-sm font-medium text-[var(--foreground)] mb-1.5">
+                Abschlussdatum
+              </label>
+              <input
+                type="date"
+                value={completedAt}
+                onChange={(e) => setCompletedAt(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--foreground)] mb-1.5">
+                Abschlussnotiz
+              </label>
+              <textarea
+                value={closingNote}
+                onChange={(e) => setClosingNote(e.target.value)}
+                placeholder="Was wurde erreicht? Was bleibt offen?"
+                rows={4}
+                className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Next Step */}
         <div>
