@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CRITERIA, calculateScore, getScoreColor, getProgressValue } from '@/lib/criteria'
@@ -500,6 +500,13 @@ function RouletteModal({
   onRefresh: () => void
 }) {
   const router = useRouter()
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
   const score = result?.project.computedScore ?? 0
   const scoreColor = result ? getScoreColor(score) : 'amber'
   const gradientFrom = scoreColor === 'green' ? '#22c55e' : scoreColor === 'amber' ? '#f59e0b' : '#3b82f6'
@@ -605,6 +612,7 @@ function RouletteModal({
 }
 
 export default function Dashboard() {
+  const router = useRouter()
   const [projects, setProjects] = useState<ProjectWithScores[]>([])
   const [weights, setWeights] = useState<WeightsMap>({})
   const [loading, setLoading] = useState(true)
@@ -694,7 +702,7 @@ export default function Dashboard() {
     URL.revokeObjectURL(url)
   }
 
-  const handleRoulette = async (fromModal = false) => {
+  const handleRoulette = useCallback(async (fromModal = false) => {
     if (fromModal) {
       setRouletteModalLoading(true)
       setRouletteResult(null)
@@ -719,7 +727,20 @@ export default function Dashboard() {
       setRouletteLoading(false)
       setRouletteModalLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || (e.target as HTMLElement).isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 'n') { e.preventDefault(); router.push('/projects/new') }
+      if (e.key === 'r') { e.preventDefault(); router.push('/review') }
+      if (e.key === '?') { e.preventDefault(); handleRoulette(false) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [router, handleRoulette])
 
   if (loading) {
     return (
