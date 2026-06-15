@@ -70,6 +70,10 @@ export default function ProjectForm({
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // AI tag suggestion
+  const [tagSuggestLoading, setTagSuggestLoading] = useState(false)
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
+
   // AI score suggestion
   const [aiAvailable, setAiAvailable] = useState(false)
   const [aiText, setAiText] = useState('')
@@ -259,6 +263,29 @@ export default function ProjectForm({
     )
   }
 
+  // ── AI tag suggestion ─────────────────────────────────────────────────────
+
+  const handleTagSuggest = async () => {
+    if (!name.trim() || tagSuggestLoading) return
+    setTagSuggestLoading(true)
+    setTagSuggestions([])
+    try {
+      const res = await fetch('/api/ai/tag-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, existingTags: allTags }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setTagSuggestions((data.suggestions as string[]).filter((t) => !tags.includes(t)))
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setTagSuggestLoading(false)
+    }
+  }
+
   // ── AI score suggestion ───────────────────────────────────────────────────
 
   const handleAiSuggest = async () => {
@@ -397,9 +424,19 @@ export default function ProjectForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--foreground)] mb-1.5">
-              Tags
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-medium text-[var(--foreground)]">Tags</label>
+              {aiAvailable && (
+                <button
+                  type="button"
+                  onClick={handleTagSuggest}
+                  disabled={!name.trim() || tagSuggestLoading}
+                  className="text-xs text-amber-400 hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {tagSuggestLoading ? 'Analysiere…' : '✦ Vorschlag'}
+                </button>
+              )}
+            </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {tags.map((tag) => (
@@ -448,6 +485,24 @@ export default function ProjectForm({
                 <option key={t} value={t} />
               ))}
             </datalist>
+            {tagSuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="text-xs text-[var(--muted-foreground)] self-center">KI:</span>
+                {tagSuggestions.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      if (!tags.includes(tag)) setTags((prev) => [...prev, tag])
+                      setTagSuggestions((prev) => prev.filter((t) => t !== tag))
+                    }}
+                    className="text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
