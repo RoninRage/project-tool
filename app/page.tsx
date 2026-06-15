@@ -108,10 +108,16 @@ function ProjectCard({
   project,
   weights,
   onDelete,
+  isSelected,
+  onToggleCompare,
+  compareDisabled,
 }: {
   project: ProjectWithScores
   weights: WeightsMap
   onDelete: (id: string) => void
+  isSelected: boolean
+  onToggleCompare: (id: string) => void
+  compareDisabled: boolean
 }) {
   const router = useRouter()
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -167,7 +173,15 @@ function ProjectCard({
             </p>
           )}
         </div>
-        <div className="flex gap-1 shrink-0">
+        <div className="flex gap-1 shrink-0 items-center">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleCompare(project.id)}
+            disabled={compareDisabled}
+            title="Zum Vergleich hinzufügen"
+            className="w-3.5 h-3.5 rounded accent-[var(--accent)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          />
           <button
             onClick={() => router.push(`/projects/${project.id}/edit`)}
             className="p-1.5 rounded hover:bg-slate-700 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
@@ -488,6 +502,149 @@ function Toast({ message, onDismiss }: { message: string; onDismiss: () => void 
   )
 }
 
+function CompareModal({
+  projects,
+  weights,
+  onClose,
+}: {
+  projects: ProjectWithScores[]
+  weights: WeightsMap
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const projectData = projects.map((p) => {
+    const scoreMap: Record<string, number> = {}
+    for (const s of p.scores) scoreMap[s.criterionId] = s.value
+    scoreMap['progress'] = getProgressValue(p.tasks ?? [])
+    const breakdown = getScoreBreakdown(scoreMap, weights)
+    return { project: p, scoreMap, breakdown }
+  })
+
+  const SCORE_HEX: Record<string, string> = {
+    green: '#22c55e', amber: '#f59e0b', blue: '#3b82f6',
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-4xl max-h-[90vh] rounded-2xl border border-[var(--card-border)] flex flex-col"
+        style={{ background: 'var(--card)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-[var(--card-border)] shrink-0">
+          <h2 className="text-base font-semibold text-[var(--foreground)]">Vergleich</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-slate-700 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="overflow-auto p-6">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] pb-4 pr-4 w-36"></th>
+                {projectData.map(({ project }) => {
+                  const score = project.computedScore ?? 0
+                  const color = getScoreColor(score)
+                  const hex = SCORE_HEX[color]
+                  return (
+                    <th key={project.id} className="pb-4 px-3 text-left align-top">
+                      <div className="font-semibold text-[var(--foreground)] leading-tight">{project.name}</div>
+                      {project.category && (
+                        <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{project.category}</div>
+                      )}
+                      <div className="flex items-center gap-2 mt-2">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{ backgroundColor: STATUS_COLORS[project.status] + '33', color: STATUS_COLORS[project.status] }}
+                        >
+                          {STATUS_LABELS[project.status]}
+                        </span>
+                        <span className="font-mono font-bold text-base" style={{ color: hex }}>{score}</span>
+                      </div>
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {CRITERIA.map((criterion) => {
+                const rowData = projectData.map(({ breakdown }) =>
+                  breakdown.find((b) => b.criterion.id === criterion.id)!
+                )
+                // find winner: highest contribution
+                const contributions = rowData.map((d) => d.contribution ?? 0)
+                const maxContrib = Math.max(...contributions)
+
+                return (
+                  <tr key={criterion.id} className="border-t border-[var(--card-border)]">
+                    <td className="py-2.5 pr-4 text-xs text-[var(--muted-foreground)] font-medium align-middle whitespace-nowrap">
+                      {criterion.name}
+                    </td>
+                    {rowData.map((data, i) => {
+                      const isWinner = (data.contribution ?? 0) === maxContrib && maxContrib > 0
+                      return (
+                        <td
+                          key={i}
+                          className="py-2.5 px-3 align-middle"
+                          style={isWinner ? { background: 'rgba(245,158,11,0.07)' } : {}}
+                        >
+                          {criterion.id === 'progress' ? (
+                            <span className="text-xs text-[var(--muted-foreground)] italic">auto</span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-[var(--foreground)] w-14 shrink-0 truncate">
+                                {data.optionLabel ?? '–'}
+                              </span>
+                              <div className="flex-1 h-1.5 rounded-full bg-slate-700 overflow-hidden min-w-0">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: data.contribution !== null && data.maxContribution
+                                      ? `${(data.contribution / data.maxContribution) * 100}%`
+                                      : '0%',
+                                    background:
+                                      data.direction === 'up' ? '#22c55e'
+                                      : data.direction === 'down' ? '#ef4444'
+                                      : '#6b7280',
+                                  }}
+                                />
+                              </div>
+                              <span className="text-xs text-[var(--muted-foreground)] w-7 text-right tabular-nums shrink-0">
+                                {data.contribution !== null ? `${data.contribution.toFixed(0)}%` : '–'}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function RouletteModal({
   result,
   modalLoading,
@@ -620,6 +777,16 @@ export default function Dashboard() {
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
   const [sort, setSort] = useState<SortOption>('score_desc')
   const [viewMode, setViewMode] = useState<ViewMode>('cards')
+
+  // Compare
+  const [compareIds, setCompareIds] = useState<string[]>([])
+  const [compareOpen, setCompareOpen] = useState(false)
+
+  const toggleCompare = useCallback((id: string) => {
+    setCompareIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 3 ? [...prev, id] : prev
+    )
+  }, [])
 
   // Roulette
   const [rouletteAvailable, setRouletteAvailable] = useState(false)
@@ -922,6 +1089,9 @@ export default function Dashboard() {
                   project={project}
                   weights={weights}
                   onDelete={handleDelete}
+                  isSelected={compareIds.includes(project.id)}
+                  onToggleCompare={toggleCompare}
+                  compareDisabled={!compareIds.includes(project.id) && compareIds.length >= 3}
                 />
               ))}
             </div>
@@ -943,6 +1113,56 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Sticky compare bar */}
+      {compareIds.length >= 1 && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border border-[var(--card-border)]"
+          style={{ background: 'var(--card)' }}
+        >
+          <div className="flex items-center gap-2">
+            {compareIds.map((id) => {
+              const p = projects.find((x) => x.id === id)
+              return p ? (
+                <span
+                  key={id}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-[var(--card-border)] text-[var(--foreground)]"
+                >
+                  {p.name}
+                  <button
+                    onClick={() => toggleCompare(id)}
+                    className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors leading-none"
+                  >×</button>
+                </span>
+              ) : null
+            })}
+          </div>
+          <button
+            onClick={() => setCompareIds([])}
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            title="Auswahl aufheben"
+          >
+            Alle ×
+          </button>
+          {compareIds.length >= 2 && (
+            <button
+              onClick={() => setCompareOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent)] text-black hover:opacity-90 transition-opacity"
+            >
+              Vergleichen →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Compare modal */}
+      {compareOpen && (
+        <CompareModal
+          projects={projects.filter((p) => compareIds.includes(p.id))}
+          weights={weights}
+          onClose={() => setCompareOpen(false)}
+        />
+      )}
 
       {/* Roulette modal */}
       {rouletteOpen && (
