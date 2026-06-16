@@ -443,7 +443,7 @@ export default function ProjectForm({
               <div className="flex gap-1.5 shrink-0">
                 <button
                   type="button"
-                  onClick={() => { setDescription(descSuggestion); setDescSuggestion(null) }}
+                  onClick={() => { if (!descSuggestion) return; setDescription(descSuggestion); setDescSuggestion(null) }}
                   className="text-xs px-2 py-0.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
                 >
                   Übernehmen
