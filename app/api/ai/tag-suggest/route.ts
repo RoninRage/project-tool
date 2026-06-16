@@ -56,7 +56,7 @@ Beispiel: ["Homelab","Hardware"]`
     })
 
     const responseText = (message.content[0] as { type: string; text: string }).text
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/)
+    const jsonMatch = responseText.match(/\[[\s\S]*?\]/)
     if (!jsonMatch) throw new Error('No JSON array found in response')
     const parsed = JSON.parse(jsonMatch[0])
 
