@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const description = ((message.content[0] as { type: string; text: string }).text ?? '')
       .trim()
-      .replace(/^["„]|[""]$/g, '')
+      .replace(/^["„“”]+|["“”]+$/g, '')
 
     return NextResponse.json({ description })
   } catch (error) {
