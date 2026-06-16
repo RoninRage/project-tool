@@ -14,6 +14,7 @@ model Project {
   status      String         @default("IDEA")
   tags        String         @default("[]")
   nextStep    String?
+  projektLink String?
   completedAt DateTime?
   closingNote String?
   createdAt   DateTime       @default(now())

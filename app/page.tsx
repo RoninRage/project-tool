@@ -329,6 +329,19 @@ function ProjectCard({
         </div>
       )}
 
+      {/* Projekt-Link */}
+      {project.projektLink && (
+        <a
+          href={project.projektLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1"
+        >
+          🔗 Link
+        </a>
+      )}
+
       {/* Task summary */}
       {taskTotal > 0 && (
         <div className="text-xs text-[var(--muted-foreground)]">
