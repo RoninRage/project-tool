@@ -549,7 +549,7 @@ export default function ProjectForm({
                     key={tag}
                     type="button"
                     onClick={() => {
-                      if (!tags.includes(tag)) setTags((prev) => [...prev, tag])
+                      setTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]))
                       setTagSuggestions((prev) => prev.filter((t) => t !== tag))
                     }}
                     className="text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
