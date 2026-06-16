@@ -15,7 +15,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 503 })
   }
 
-  const body = await request.json()
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
   const { name, description, status, currentNextStep, tasks } = body as {
     name?: string
     description?: string
@@ -31,9 +36,21 @@ export async function POST(request: NextRequest) {
   const lines: string[] = [`Projektname: ${name.trim()}`]
   if (description?.trim()) lines.push(`Beschreibung: ${description.trim()}`)
   if (status) lines.push(`Status: ${STATUS_LABELS[status] ?? status}`)
-  if (tasks && tasks.length > 0) {
+  const safeTasks = (Array.isArray(tasks) ? tasks : [])
+    .filter(
+      (task): task is { text: string; done: boolean } =>
+        typeof task?.text === 'string' && typeof task?.done === 'boolean'
+    )
+    .map((task) => ({
+      ...task,
+      text: task.text.replace(/[\r\n]+/g, ' ').trim(),
+    }))
+    .filter((task) => task.text.length > 0)
+    .slice(0, 50)
+
+  if (safeTasks.length > 0) {
     lines.push('Tasks:')
-    for (const t of tasks) {
+    for (const t of safeTasks) {
       lines.push(`- [${t.done ? 'x' : ' '}] ${t.text}`)
     }
   }
@@ -52,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     const nextStep = ((message.content[0] as { type: string; text: string }).text ?? '')
       .trim()
-      .replace(/^["„""]+|["""]+$/g, '')
+      .replace(/^["„“”]+|["“”]+$/g, '')
 
     return NextResponse.json({ nextStep })
   } catch (error) {

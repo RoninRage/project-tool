@@ -656,6 +656,7 @@ export default function ProjectForm({
                 <button
                   type="button"
                   onClick={() => setNextStepSuggestion(null)}
+                  aria-label="Vorschlag verwerfen"
                   className="text-xs px-1.5 py-0.5 rounded border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                 >
                   ✕
