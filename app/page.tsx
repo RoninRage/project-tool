@@ -329,6 +329,19 @@ function ProjectCard({
         </div>
       )}
 
+      {/* Projekt-Link */}
+      {project.projectLink && (
+        <a
+          href={project.projectLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1"
+        >
+          🔗 Link
+        </a>
+      )}
+
       {/* Task summary */}
       {taskTotal > 0 && (
         <div className="text-xs text-[var(--muted-foreground)]">
@@ -777,27 +790,24 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithScores[]>([])
   const [weights, setWeights] = useState<WeightsMap>({})
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<Status | 'ALL'>(() => {
-    if (typeof window === 'undefined') return 'ACTIVE'
-    return (sessionStorage.getItem('pp_statusFilter') as Status | 'ALL') ?? 'ACTIVE'
-  })
-  const [tagFilter, setTagFilter] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return []
-    try { return JSON.parse(sessionStorage.getItem('pp_tagFilter') ?? '[]') } catch { return [] }
-  })
-  const [sort, setSort] = useState<SortOption>(() => {
-    if (typeof window === 'undefined') return 'score_desc'
-    return (sessionStorage.getItem('pp_sort') as SortOption) ?? 'score_desc'
-  })
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window === 'undefined') return 'cards'
-    return (sessionStorage.getItem('pp_viewMode') as ViewMode) ?? 'cards'
-  })
+  const [statusFilter, setStatusFilter] = useState<Status | 'ALL'>('ACTIVE')
+  const [tagFilter, setTagFilter] = useState<string[]>([])
+  const [sort, setSort] = useState<SortOption>('score_desc')
+  const [viewMode, setViewMode] = useState<ViewMode>('cards')
+  const [hydrated, setHydrated] = useState(false)
 
-  useEffect(() => { sessionStorage.setItem('pp_statusFilter', statusFilter) }, [statusFilter])
-  useEffect(() => { sessionStorage.setItem('pp_tagFilter', JSON.stringify(tagFilter)) }, [tagFilter])
-  useEffect(() => { sessionStorage.setItem('pp_sort', sort) }, [sort])
-  useEffect(() => { sessionStorage.setItem('pp_viewMode', viewMode) }, [viewMode])
+  useEffect(() => {
+    setStatusFilter((sessionStorage.getItem('pp_statusFilter') as Status | 'ALL') ?? 'ACTIVE')
+    try { setTagFilter(JSON.parse(sessionStorage.getItem('pp_tagFilter') ?? '[]')) } catch {}
+    setSort((sessionStorage.getItem('pp_sort') as SortOption) ?? 'score_desc')
+    setViewMode((sessionStorage.getItem('pp_viewMode') as ViewMode) ?? 'cards')
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => { if (hydrated) sessionStorage.setItem('pp_statusFilter', statusFilter) }, [hydrated, statusFilter])
+  useEffect(() => { if (hydrated) sessionStorage.setItem('pp_tagFilter', JSON.stringify(tagFilter)) }, [hydrated, tagFilter])
+  useEffect(() => { if (hydrated) sessionStorage.setItem('pp_sort', sort) }, [hydrated, sort])
+  useEffect(() => { if (hydrated) sessionStorage.setItem('pp_viewMode', viewMode) }, [hydrated, viewMode])
 
   // Compare
   const [compareIds, setCompareIds] = useState<string[]>([])

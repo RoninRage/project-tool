@@ -30,6 +30,7 @@ export interface ProjectFormData {
   status: Status
   tags: string[]
   nextStep: string
+  projectLink?: string
   scores: Record<string, number>
   completedAt?: string
   closingNote?: string
@@ -60,6 +61,7 @@ export default function ProjectForm({
   const [tagInput, setTagInput] = useState('')
   const [allTags, setAllTags] = useState<string[]>([])
   const [nextStep, setNextStep] = useState(initialData?.nextStep ?? '')
+  const [projectLink, setProjectLink] = useState(initialData?.projectLink ?? '')
   const [completedAt, setCompletedAt] = useState(initialData?.completedAt ?? '')
   const [closingNote, setClosingNote] = useState(initialData?.closingNote ?? '')
   const [scores, setScores] = useState<Record<string, number>>(
@@ -398,7 +400,7 @@ export default function ProjectForm({
     }
     setSubmitting(true)
     try {
-      await onSubmit({ name: name.trim(), description, status, tags, nextStep, scores, completedAt: completedAt || undefined, closingNote: closingNote || undefined })
+      await onSubmit({ name: name.trim(), description, status, tags, nextStep, projectLink: projectLink || undefined, scores, completedAt: completedAt || undefined, closingNote: closingNote || undefined })
     } catch {
       setSubmitting(false)
     }
@@ -664,6 +666,18 @@ export default function ProjectForm({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Projekt-Link */}
+        <div>
+          <label className="block text-sm font-medium text-[var(--foreground)] mb-1.5">Projekt-Link</label>
+          <input
+            type="url"
+            value={projectLink}
+            onChange={(e) => setProjectLink(e.target.value)}
+            placeholder="z.B. https://claude.ai/project/…"
+            className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+          />
         </div>
       </div>
 

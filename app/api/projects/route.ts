@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calculateScore, DEFAULT_WEIGHTS, getProgressValue } from '@/lib/criteria'
+import { sanitizeUrl } from '@/lib/url-utils'
 
 export async function GET() {
   try {
@@ -41,7 +42,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description, status, tags, nextStep, scores, completedAt, closingNote } = body
+    const { name, description, status, tags, nextStep, projectLink, scores, completedAt, closingNote } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
           status: status || 'IDEA',
           tags: JSON.stringify(Array.isArray(tags) ? tags : []),
           nextStep: nextStep || null,
+          projectLink: sanitizeUrl(projectLink),
           completedAt: completedAt ? new Date(completedAt) : null,
           closingNote: closingNote || null,
         },
