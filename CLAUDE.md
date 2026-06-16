@@ -50,7 +50,7 @@ The computed score is **never persisted**. It's recalculated on demand — serve
 ### AI-Features (alle nur sichtbar wenn `ANTHROPIC_API_KEY` gesetzt)
 2. ~~**AI: Score-Vorschlag aus Freitext**~~ ✓ — Im Projekt-Formular: Freitext-Eingabe, Claude schlägt Scores für alle 8 Kriterien vor. Jeden einzeln übernehmbar.
 3. **AI: Nächster Schritt vorschlagen** — Detailseite: Button "Nächsten Schritt vorschlagen", Claude generiert basierend auf Name, Description, Status und Tasks einen konkreten nächsten Schritt. Ein-Klick-Übernahme. Prompt noch ausstehend.
-4. **AI: Review-Assistent** — Im Review-Ritual: Claude gibt pro Projekt eine kurze kontextuelle Einschätzung (Score, Zombie-Status, Task-Fortschritt) als Entscheidungshilfe. Prompt noch ausstehend.
+4. ~~**AI: Review-Assistent**~~ ✓ — Im Review-Ritual: "✦ KI-Einschätzung"-Button pro Projektkarte, Claude Haiku gibt 2–3 Sätze zu Score, Inaktivität und Task-Fortschritt als Entscheidungshilfe.
 5. ~~**AI: Projekt-Beschreibung generieren**~~ ✓ — Im Formular: "✦ Vorschlag"-Button neben dem Beschreibung-Label, Claude Haiku generiert aus Titel + allen Kriterien-Scores einen deutschen Kurztext. Vorschlag erscheint als Inline-Preview mit Übernehmen/✕.
 6. ~~**AI: Kategorie-Vorschlag**~~ ✓ — Ersetzt durch AI Tag-Vorschlag (siehe 7).
 
