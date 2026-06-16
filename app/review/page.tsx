@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getScoreColor, getProgressValue } from '@/lib/criteria'
 import type { ProjectWithScores } from '@/lib/types'
@@ -48,6 +48,7 @@ export default function ReviewPage() {
   const [aiAvailable, setAiAvailable] = useState(false)
   const [assessment, setAssessment] = useState<string | null>(null)
   const [assessmentLoading, setAssessmentLoading] = useState(false)
+  const assessmentRequestIdRef = useRef(0)
 
   useEffect(() => {
     Promise.all([
@@ -65,6 +66,7 @@ export default function ReviewPage() {
   }, [])
 
   const advance = (result: ReviewResult) => {
+    assessmentRequestIdRef.current += 1
     const next = [...results, result]
     setResults(next)
     setAssessment(null)
@@ -77,6 +79,8 @@ export default function ReviewPage() {
   }
 
   const handleAssess = async () => {
+    const requestId = assessmentRequestIdRef.current + 1
+    assessmentRequestIdRef.current = requestId
     const p = projects[index]
     setAssessmentLoading(true)
     const daysSinceUpdate = Math.floor((Date.now() - new Date(p.updatedAt).getTime()) / 86400000)
@@ -96,11 +100,11 @@ export default function ReviewPage() {
         }),
       })
       const data = await res.json()
-      if (res.ok) setAssessment(data.assessment)
+      if (res.ok && assessmentRequestIdRef.current === requestId) setAssessment(data.assessment)
     } catch {
       // silently ignore
     } finally {
-      setAssessmentLoading(false)
+      if (assessmentRequestIdRef.current === requestId) setAssessmentLoading(false)
     }
   }
 
