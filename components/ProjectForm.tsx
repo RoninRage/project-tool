@@ -73,7 +73,6 @@ export default function ProjectForm({
   // AI description suggestion
   const [descSuggestion, setDescSuggestion] = useState<string | null>(null)
   const [descLoading, setDescLoading] = useState(false)
-
   // AI tag suggestion
   const [tagSuggestLoading, setTagSuggestLoading] = useState(false)
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
@@ -287,7 +286,6 @@ export default function ProjectForm({
       setDescLoading(false)
     }
   }
-
   // ── AI tag suggestion ─────────────────────────────────────────────────────
 
   const handleTagSuggest = async () => {
@@ -455,6 +453,7 @@ export default function ProjectForm({
                   onClick={() => setDescSuggestion(null)}
                   aria-label="Vorschlag verwerfen"
                   className="text-xs px-1.5 py-0.5 rounded border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                >
                   ✕
                 </button>
               </div>
