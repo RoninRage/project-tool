@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calculateScore, DEFAULT_WEIGHTS, getProgressValue } from '@/lib/criteria'
 
+function sanitizeUrl(url: unknown): string | null {
+  if (!url || typeof url !== 'string') return null
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return url
+  } catch {}
+  return null
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -49,7 +58,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, description, status, tags, nextStep, projektLink, scores, completedAt, closingNote } = body
+    const { name, description, status, tags, nextStep, projectLink, scores, completedAt, closingNote } = body
 
     const existing = await prisma.project.findUnique({ where: { id } })
     if (!existing) {
@@ -65,7 +74,7 @@ export async function PUT(
           status: status ?? existing.status,
           tags: tags !== undefined ? JSON.stringify(Array.isArray(tags) ? tags : []) : existing.tags,
           nextStep: nextStep !== undefined ? nextStep || null : existing.nextStep,
-          projektLink: projektLink !== undefined ? projektLink || null : existing.projektLink,
+          projectLink: projectLink !== undefined ? sanitizeUrl(projectLink) : existing.projectLink,
           completedAt: completedAt !== undefined ? (completedAt ? new Date(completedAt) : null) : existing.completedAt,
           closingNote: closingNote !== undefined ? closingNote || null : existing.closingNote,
         },
