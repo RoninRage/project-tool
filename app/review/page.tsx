@@ -68,6 +68,7 @@ export default function ReviewPage() {
     const next = [...results, result]
     setResults(next)
     setAssessment(null)
+    setAssessmentLoading(false)
     if (index + 1 >= projects.length) {
       setDone(true)
     } else {
