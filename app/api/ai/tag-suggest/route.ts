@@ -23,8 +23,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'name is required' }, { status: 400 })
   }
 
-  const tagHint = existingTags?.length
-    ? `Prefer reusing existing tags where they fit: ${existingTags.join(', ')}. Coin new ones only when none fit.`
+  const safeExistingTags = (Array.isArray(existingTags) ? existingTags : [])
+    .filter((t): t is string => typeof t === 'string')
+    .map((t) => t.replace(/[\r\n]+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 50)
+
+  const tagHint = safeExistingTags.length
+    ? `Prefer reusing existing tags where they fit: ${safeExistingTags.join(', ')}. Coin new ones only when none fit.`
     : 'There are no existing tags yet — create appropriate ones.'
 
   const systemPrompt = `Du bist ein Assistent für ein Projekt-Priorisierungstool. Schlage 1–3 passende Tags für das Projekt vor.
