@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getScoreColor, getProgressValue } from '@/lib/criteria'
 import type { ProjectWithScores } from '@/lib/types'
@@ -45,27 +45,66 @@ export default function ReviewPage() {
   const [results, setResults] = useState<ReviewResult[]>([])
   const [acting, setActing] = useState(false)
   const [done, setDone] = useState(false)
+  const [aiAvailable, setAiAvailable] = useState(false)
+  const [assessment, setAssessment] = useState<string | null>(null)
+  const [assessmentLoading, setAssessmentLoading] = useState(false)
+  const assessmentRequestIdRef = useRef(0)
 
   useEffect(() => {
-    fetch('/api/projects')
-      .then((r) => r.json())
-      .then((data: ProjectWithScores[]) => {
-        const queue = data
-          .filter((p) => p.status !== 'DONE')
-          .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
-        setProjects(queue)
-        setLoading(false)
-        if (queue.length === 0) setDone(true)
-      })
+    Promise.all([
+      fetch('/api/projects').then((r) => r.json()),
+      fetch('/api/roulette/available').then((r) => r.json()),
+    ]).then(([data, aiData]: [ProjectWithScores[], { available: boolean }]) => {
+      const queue = data
+        .filter((p) => p.status !== 'DONE')
+        .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
+      setProjects(queue)
+      setLoading(false)
+      if (queue.length === 0) setDone(true)
+      setAiAvailable(aiData.available === true)
+    })
   }, [])
 
   const advance = (result: ReviewResult) => {
+    assessmentRequestIdRef.current += 1
     const next = [...results, result]
     setResults(next)
+    setAssessment(null)
+    setAssessmentLoading(false)
     if (index + 1 >= projects.length) {
       setDone(true)
     } else {
       setIndex((i) => i + 1)
+    }
+  }
+
+  const handleAssess = async () => {
+    const requestId = assessmentRequestIdRef.current + 1
+    assessmentRequestIdRef.current = requestId
+    const p = projects[index]
+    setAssessmentLoading(true)
+    const daysSinceUpdate = Math.floor((Date.now() - new Date(p.updatedAt).getTime()) / 86400000)
+    try {
+      const res = await fetch('/api/ai/review-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: p.name,
+          description: p.description,
+          status: p.status,
+          score: p.computedScore ?? 0,
+          tasksDone: p.tasks?.filter((t) => t.done).length ?? 0,
+          tasksTotal: p.tasks?.length ?? 0,
+          nextStep: p.nextStep,
+          daysSinceUpdate,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && assessmentRequestIdRef.current === requestId) setAssessment(data.assessment)
+    } catch {
+      // silently ignore
+    } finally {
+      if (assessmentRequestIdRef.current === requestId) setAssessmentLoading(false)
     }
   }
 
@@ -242,6 +281,26 @@ export default function ReviewPage() {
                   Nächster Schritt
                 </span>
                 {project.nextStep}
+              </div>
+            )}
+
+            {/* AI assessment */}
+            {aiAvailable && (
+              <div className="mb-5">
+                {!assessment ? (
+                  <button
+                    type="button"
+                    onClick={handleAssess}
+                    disabled={assessmentLoading}
+                    className="text-xs text-amber-400 hover:text-amber-300 disabled:opacity-40 transition-colors"
+                  >
+                    {assessmentLoading ? 'Analysiere…' : '✦ KI-Einschätzung'}
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 text-sm text-[var(--foreground)] leading-relaxed">
+                    {assessment}
+                  </div>
+                )}
               </div>
             )}
 
