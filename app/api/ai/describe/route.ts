@@ -25,7 +25,12 @@ export async function POST(request: NextRequest) {
 
   const criteriaLines = CRITERIA.filter((c) => c.id !== 'progress')
     .map((c) => {
-      const idx = scores?.[c.id] ?? 0
+      const raw = scores?.[c.id]
+      const maxIdx = c.options.length - 1
+      const idx =
+        typeof raw === 'number' && Number.isFinite(raw)
+          ? Math.max(0, Math.min(maxIdx, Math.round(raw)))
+          : 0
       return `- ${c.name}: ${c.options[idx]}`
     })
     .join('\n')
