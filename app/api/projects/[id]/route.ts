@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calculateScore, DEFAULT_WEIGHTS, getProgressValue } from '@/lib/criteria'
-
-function sanitizeUrl(url: unknown): string | null {
-  if (!url || typeof url !== 'string') return null
-  try {
-    const parsed = new URL(url)
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return url
-  } catch {}
-  return null
-}
+import { sanitizeUrl } from '@/lib/url-utils'
 
 export async function GET(
   _request: NextRequest,
