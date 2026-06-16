@@ -73,6 +73,9 @@ export default function ProjectForm({
   // AI description suggestion
   const [descSuggestion, setDescSuggestion] = useState<string | null>(null)
   const [descLoading, setDescLoading] = useState(false)
+  // AI next step suggestion
+  const [nextStepSuggestion, setNextStepSuggestion] = useState<string | null>(null)
+  const [nextStepLoading, setNextStepLoading] = useState(false)
   // AI tag suggestion
   const [tagSuggestLoading, setTagSuggestLoading] = useState(false)
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
@@ -286,6 +289,33 @@ export default function ProjectForm({
       setDescLoading(false)
     }
   }
+  // ── AI next step suggestion ──────────────────────────────────────────────
+
+  const handleNextStepSuggest = async () => {
+    if (!name.trim() || nextStepLoading) return
+    setNextStepLoading(true)
+    setNextStepSuggestion(null)
+    try {
+      const res = await fetch('/api/ai/next-step-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          description,
+          status,
+          currentNextStep: nextStep || undefined,
+          tasks: tasks.map(({ text, done }) => ({ text, done })),
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) setNextStepSuggestion(data.nextStep)
+    } catch {
+      // silently ignore
+    } finally {
+      setNextStepLoading(false)
+    }
+  }
+
   // ── AI tag suggestion ─────────────────────────────────────────────────────
 
   const handleTagSuggest = async () => {
@@ -592,9 +622,19 @@ export default function ProjectForm({
 
         {/* Next Step */}
         <div>
-          <label className="block text-sm font-medium text-[var(--foreground)] mb-1.5">
-            Nächster Schritt
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-[var(--foreground)]">Nächster Schritt</label>
+            {aiAvailable && (
+              <button
+                type="button"
+                onClick={handleNextStepSuggest}
+                disabled={!name.trim() || nextStepLoading}
+                className="text-xs text-amber-400 hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {nextStepLoading ? 'Analysiere…' : '✦ Vorschlag'}
+              </button>
+            )}
+          </div>
           <input
             type="text"
             value={nextStep}
@@ -602,6 +642,28 @@ export default function ProjectForm({
             placeholder="Was ist der konkrete nächste Schritt?"
             className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors"
           />
+          {nextStepSuggestion && (
+            <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5">
+              <p className="flex-1 text-sm text-[var(--foreground)]">{nextStepSuggestion}</p>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setNextStep(nextStepSuggestion); setNextStepSuggestion(null) }}
+                  className="text-xs px-2 py-0.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                >
+                  Übernehmen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNextStepSuggestion(null)}
+                  aria-label="Vorschlag verwerfen"
+                  className="text-xs px-1.5 py-0.5 rounded border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
