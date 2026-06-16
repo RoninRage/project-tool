@@ -70,6 +70,10 @@ export default function ProjectForm({
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // AI description suggestion
+  const [descSuggestion, setDescSuggestion] = useState<string | null>(null)
+  const [descLoading, setDescLoading] = useState(false)
+
   // AI tag suggestion
   const [tagSuggestLoading, setTagSuggestLoading] = useState(false)
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
@@ -263,6 +267,27 @@ export default function ProjectForm({
     )
   }
 
+  // ── AI description suggestion ─────────────────────────────────────────────
+
+  const handleDescSuggest = async () => {
+    if (!name.trim() || descLoading) return
+    setDescLoading(true)
+    setDescSuggestion(null)
+    try {
+      const res = await fetch('/api/ai/describe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, scores }),
+      })
+      const data = await res.json()
+      if (res.ok) setDescSuggestion(data.description)
+    } catch {
+      // silently ignore
+    } finally {
+      setDescLoading(false)
+    }
+  }
+
   // ── AI tag suggestion ─────────────────────────────────────────────────────
 
   const handleTagSuggest = async () => {
@@ -394,9 +419,19 @@ export default function ProjectForm({
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-[var(--foreground)] mb-1.5">
-            Beschreibung
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-[var(--foreground)]">Beschreibung</label>
+            {aiAvailable && (
+              <button
+                type="button"
+                onClick={handleDescSuggest}
+                disabled={!name.trim() || descLoading}
+                className="text-xs text-amber-400 hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {descLoading ? 'Analysiere…' : '✦ Vorschlag'}
+              </button>
+            )}
+          </div>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -404,6 +439,27 @@ export default function ProjectForm({
             rows={3}
             className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none"
           />
+          {descSuggestion && (
+            <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5">
+              <p className="flex-1 text-sm text-[var(--foreground)]">{descSuggestion}</p>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setDescription(descSuggestion); setDescSuggestion(null) }}
+                  className="text-xs px-2 py-0.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                >
+                  Übernehmen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescSuggestion(null)}
+                  className="text-xs px-1.5 py-0.5 rounded border border-[var(--card-border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Status + Category */}
