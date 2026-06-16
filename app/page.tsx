@@ -777,10 +777,27 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithScores[]>([])
   const [weights, setWeights] = useState<WeightsMap>({})
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<Status | 'ALL'>('ACTIVE')
-  const [tagFilter, setTagFilter] = useState<string[]>([])
-  const [sort, setSort] = useState<SortOption>('score_desc')
-  const [viewMode, setViewMode] = useState<ViewMode>('cards')
+  const [statusFilter, setStatusFilter] = useState<Status | 'ALL'>(() => {
+    if (typeof window === 'undefined') return 'ACTIVE'
+    return (sessionStorage.getItem('pp_statusFilter') as Status | 'ALL') ?? 'ACTIVE'
+  })
+  const [tagFilter, setTagFilter] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(sessionStorage.getItem('pp_tagFilter') ?? '[]') } catch { return [] }
+  })
+  const [sort, setSort] = useState<SortOption>(() => {
+    if (typeof window === 'undefined') return 'score_desc'
+    return (sessionStorage.getItem('pp_sort') as SortOption) ?? 'score_desc'
+  })
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === 'undefined') return 'cards'
+    return (sessionStorage.getItem('pp_viewMode') as ViewMode) ?? 'cards'
+  })
+
+  useEffect(() => { sessionStorage.setItem('pp_statusFilter', statusFilter) }, [statusFilter])
+  useEffect(() => { sessionStorage.setItem('pp_tagFilter', JSON.stringify(tagFilter)) }, [tagFilter])
+  useEffect(() => { sessionStorage.setItem('pp_sort', sort) }, [sort])
+  useEffect(() => { sessionStorage.setItem('pp_viewMode', viewMode) }, [viewMode])
 
   // Compare
   const [compareIds, setCompareIds] = useState<string[]>([])
