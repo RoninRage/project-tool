@@ -10,6 +10,7 @@ services:
       - DATABASE_URL=file:/app/data/prod.db
       - NODE_ENV=production
       - SEED_DB=false
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
       - projekt-prio-data:/app/data
     restart: always
